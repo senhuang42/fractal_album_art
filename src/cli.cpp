@@ -74,27 +74,30 @@ COMMON OPTIONS
       --zoom <float>              Zoom factor (scale = 1.35/zoom)
   -i, --iterations <int>          Max iterations            (default: 400)
       --exponent <float>          z^exponent + c            (default: 2)
-      --bailout <float>           Escape radius             (default: 256)
+      --bailout <float>           Escape radius             (default: 10000)
   -w, --width <int>               Image width px            (default: 1600)
       --height <int>              Image height px           (default: 1600)
       --size <WxH>                Set width and height at once
       --ssaa <int>                Supersampling factor      (default: 4)
-  -p, --palette <spec>            Named palette or hex list (default: aurora)
-      --no-cyclic                 Don't close the gradient loop
-      --color-density <float>     Palette cycles per iter   (default: 0.18)
+  -p, --palette <spec>            Named palette or hex list (default: noir)
+      --cyclic                    Loop the gradient (ramps are open by default)
+      --stripe-color <float>      Stripe-average weight     (default: 1.0)
+      --stripe-freq <float>       Stripe density 4/6/8 best (default: 6)
+      --stripe-contrast <float>   Stripe contrast stretch   (default: 1.6)
+      --color-density <float>     Iteration hue (0 = off)   (default: 0)
       --color-offset <float>      Palette phase shift [0,1) (default: 0)
-      --angle-color <float>       Escape-angle hue weight   (default: 0.1)
-      --trap-color <float>        Orbit-trap hue weight     (default: 1.6)
+      --angle-color <float>       Escape-angle hue weight   (default: 0)
+      --trap-color <float>        Orbit-trap hue weight     (default: 0)
       --trap-x <float>            Orbit-trap point x        (default: 0)
       --trap-y <float>            Orbit-trap point y        (default: 0)
       --inside <hex>              Color of points in the set(default: #000000)
       --saturation <float>        Saturation grade          (default: 1.3)
       --gamma <float>             Gamma grade               (default: 1.05)
-      --shading <float>           Normal-map emboss 0..1    (default: 0.6)
+      --shading <float>           Normal-map emboss (0=off) (default: 0)
       --light-angle <float>       Light direction degrees   (default: 45)
       --light-height <float>      Light elevation           (default: 1.2)
       --glow <float>              Distance-estimate glow     (default: 0)
-      --falloff <float>           Exterior fade-to-void      (default: 0.009)
+      --falloff <float>           Exterior fade-to-void      (default: 0)
   -o, --output <path>             Output file
 
 VIDEO OPTIONS
@@ -141,7 +144,7 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
 
     // Parse everything into a VideoConfig; the Render path uses the base slice.
     VideoConfig cfg;
-    std::string palette_spec = "aurora";
+    std::string palette_spec = "noir";
     bool output_set = false;
     bool ssaa_set = false;
 
@@ -192,9 +195,13 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
             ssaa_set = true;
         }
         else if (flag == "-p" || flag == "--palette") { if (!cur.nextStr(flag, palette_spec)) break; }
+        else if (flag == "--cyclic")    { cfg.cyclic = true; }
         else if (flag == "--no-cyclic") { cfg.cyclic = false; }
         else if (flag == "--color-density") { if (!cur.nextDouble(flag, cfg.color_density)) break; }
         else if (flag == "--color-offset")  { if (!cur.nextDouble(flag, cfg.color_offset)) break; }
+        else if (flag == "--stripe-color")    { if (!cur.nextDouble(flag, cfg.stripe_color)) break; }
+        else if (flag == "--stripe-freq")     { if (!cur.nextDouble(flag, cfg.stripe_freq)) break; }
+        else if (flag == "--stripe-contrast") { if (!cur.nextDouble(flag, cfg.stripe_contrast)) break; }
         else if (flag == "--angle-color")   { if (!cur.nextDouble(flag, cfg.angle_color)) break; }
         else if (flag == "--trap-color")    { if (!cur.nextDouble(flag, cfg.trap_color)) break; }
         else if (flag == "--trap-x")        { if (!cur.nextDouble(flag, cfg.trap_x)) break; }
@@ -254,6 +261,10 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
 
     // Video renders hundreds of frames; default to lighter supersampling.
     if (out.kind == CommandKind::Video && !ssaa_set) cfg.ssaa = 2;
+
+    // Cycle-mode video sweeps the palette phase, which only loops seamlessly
+    // with a closed gradient.
+    if (out.kind == CommandKind::Video && cfg.mode == AnimMode::Cycle) cfg.cyclic = true;
 
     if (out.kind == CommandKind::Render) {
         out.render = static_cast<RenderConfig>(cfg); // slice base

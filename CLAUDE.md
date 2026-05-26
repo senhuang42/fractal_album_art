@@ -56,15 +56,24 @@ make test                    # -> ./run_tests (GL-free unit tests)
   between `main.o` and the others and the program crashes (SIGABRT) with
   garbage config. If you ever see weird crashes after editing a header,
   `make clean && make`.
-- **Coloring is the whole game.** The dense *body* of a fat Julia set escapes
-  at near-constant iteration, so plain smooth-iteration coloring makes it a
-  flat color. Rich body color comes from **orbit traps** (`--trap-color`).
-- **Angle decomposition speckles.** `--angle-color` adds nice hue grain near
-  the boundary but is *chaotic* deep in the body (sensitive dependence), and
-  high-frequency speckle averages to mud under SSAA. Keep it low (default 0.1).
-- **`--falloff`** fades the exterior to black by distance estimate — it's what
-  gives the "color hugging the filigree on a void" look. Too high erases the
-  smooth exterior bands; too low fills the frame with background rings.
+- **Coloring is the whole game, and SAC is the answer.** Stripe Average
+  Coloring (`fractal.frag`, faithfully following the philthompson article) is
+  the default and primary look: average `½+½·sin(freq·arg z)` over the orbit,
+  then interpolate incl/excl the last point by `frac(mu)`. That de-banding
+  interpolation is non-negotiable — without it you get level-set seams; with it
+  the smooth field reads as 3D relief. Needs a LARGE bailout (default 10000).
+- **Restrained ramp palettes are essential.** A full-spectrum hue wheel turns
+  SAC's fine detail into rainbow noise ("smushed grey"). Built-ins are
+  dark→bright ramps; default gradient is NOT looped (`cyclic=false`) so low
+  stripe → dark/void, high → bright. Perceptually-uniform `magma`/`viridis`
+  are reliable. Cycle-mode video forces `cyclic=true`.
+- **`--falloff`** (distance estimate) carves the black negative space that
+  makes the relief pop. It's back ON by default (0.014) precisely for that.
+- **These are OFF by default because they fight the clean SAC look:**
+  `--shading` (the SAC article warns slope shading adds "pointy" artifacts to
+  smooth stripe areas), `--color-density` (iteration hue → rainbow),
+  `--angle-color` (chaotic speckle deep in the body), `--trap-color` (its raw
+  min can seam). They remain available for vibrant/experimental looks.
 - Video uses lower default SSAA (2) than stills (4) because it renders hundreds
   of frames. x264 + yuv420p needs even dimensions (handled in `runVideo`).
 

@@ -50,8 +50,8 @@ struct RenderConfig {
 
     // Iteration controls.
     int    max_iter   = 400;
-    double exponent   = 2.0;   // z^exponent + c
-    double bailout    = 256.0; // escape radius (|z| > bailout => escaped)
+    double exponent   = 2.0;     // z^exponent + c
+    double bailout    = 10000.0; // escape radius; large for smooth SAC/iteration
 
     // Output image size in pixels (pre-supersampling).
     int width  = 1600;
@@ -60,36 +60,45 @@ struct RenderConfig {
 
     // Coloring.
     std::vector<Color> palette;        // gradient stops; filled from name/spec
-    bool   cyclic        = true;       // close the gradient loop for seamless cycling
-    double color_density = 0.18;       // palette cycles per iteration unit
+    // Built-in palettes are dark->bright ramps, so by default the gradient is
+    // NOT looped: low stripe values map to the dark end (negative space) and
+    // high values to the bright end. (cycle-mode video re-enables looping.)
+    bool   cyclic        = false;      // close the gradient loop?
+    // Iteration-count hue. Per the SAC reference this has "no effect" on the
+    // stripe look and just adds rainbow, so it's off by default; raise it only
+    // for traditional iteration-band coloring.
+    double color_density = 0.0;        // palette cycles per iteration unit
     double color_offset  = 0.0;        // palette phase shift [0,1)
-    // Blends the escape-angle (direction of final z) into the palette
-    // coordinate. Kept small by default: it adds hue grain at the boundary but
-    // becomes chaotic speckle deep in the body, so iteration + trap dominate.
-    double angle_color   = 0.1;        // 0 = pure iteration bands
-    // Orbit-trap coloring: weight and location of the trap point. The minimum
-    // distance the orbit comes to this point varies smoothly across the dense
-    // body, giving lush color where iteration banding alone goes flat. This is
-    // the main source of the references' rich body color.
-    double trap_color    = 1.6;        // 0 = no orbit-trap contribution
+    // Stripe Average Coloring (Haerkoenen 2007) — THE primary look. Averages
+    // sin(stripe_freq * arg z) along the orbit, de-banded by the fractional
+    // escape time. The smooth stripe field reads as 3D relief on its own.
+    double stripe_color    = 1.0;      // gradient cycles the stripe value spans
+    double stripe_freq     = 6.0;      // stripe density (integer 4/6/8 best)
+    double stripe_contrast = 2.2;      // stretch around mid to use full gradient
+    // Escape-angle blend. Adds hue grain near the boundary but turns into
+    // chaotic speckle deep in the body, so it's off by default.
+    double angle_color   = 0.0;        // 0 = no angle contribution
+    // Orbit-trap coloring: min distance the orbit comes to (trap_x, trap_y).
+    // Off by default (SAC supersedes it); the raw min can seam, so prefer SAC.
+    double trap_color    = 0.0;        // 0 = no orbit-trap contribution
     double trap_x        = 0.0;
     double trap_y        = 0.0;
     Color  inside_color  = {0,0,0};    // color for points in the set
     double saturation    = 1.3;        // final grade
     double gamma         = 1.05;       // final grade (1 = none)
 
-    // Derivative-based fidelity controls (see shaders/fractal.frag).
-    // `shading` blends in normal-map "fake 3D" lighting computed from the
-    // escape derivative — this is what gives the feathery, embossed look.
-    double shading      = 0.6;   // 0 = flat smooth color, 1 = full emboss
+    // Derivative-based normal-map "fake 3D" shading. OFF by default: the SAC
+    // reference warns slope shading makes "abrupt pointy features in the smooth
+    // areas of the stripes," and SAC already looks 3D on its own. Optional.
+    double shading      = 0.0;   // 0 = flat smooth color, 1 = full emboss
     double light_angle  = 45.0;  // light direction, degrees
     double light_height = 1.2;   // light elevation (higher = flatter)
     // `glow` lights the thin filaments using a distance estimate.
     double glow         = 0.0;   // 0 = off
-    // `falloff` fades the exterior toward inside_color by distance to the set,
-    // producing the signature black void with color hugging the filigree.
-    // 0 = exterior fully colored; larger = tighter color shell.
-    double falloff      = 0.009;
+    // `falloff` fades the exterior toward inside_color by distance to the set.
+    // This is what carves the black negative space around the structure that
+    // makes SAC relief read as 3D; larger = tighter to the set.
+    double falloff      = 0.014;
 
     std::string output = "fractal.png";
 };

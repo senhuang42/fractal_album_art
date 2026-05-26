@@ -6,32 +6,41 @@ customizable color and a one-command path to seamless 20-second loop videos.
 Renders on the GPU via OpenGL/GLSL (Apple's Metal-backed OpenGL on macOS), so a
 4K still at 16× supersampling renders in well under a second on Apple Silicon.
 
-![aurora spiral](assets/hero_aurora.png)
+![grayscale stripe-average relief](assets/hero_noir.png)
 
 | | |
 |---|---|
-| ![ice dendrite](assets/julia_ice.png) | ![ember seahorse](assets/mandel_ember.png) |
-| ![bloom pastel](assets/julia_bloom.png) | *…and whatever you can dial in* |
+| ![frost blue spiral](assets/julia_frost.png) | ![magma spiral](assets/julia_magma.png) |
+| ![ember seahorse](assets/mandel_ember.png) | *…and whatever you can dial in* |
 
 ## Why it looks good
 
-Pretty fractals are mostly about coloring and edge quality, not the iteration
-loop. This renderer layers several well-known fidelity techniques:
+Pretty fractals are almost entirely about *coloring* and edge quality, not the
+iteration loop. The centerpiece here is **Stripe Average Coloring**:
 
-- **Smooth (continuous) iteration count** — fractional escape time so color
-  bands flow instead of stair-stepping.
-- **Orbit-trap coloring** — tracks how close each orbit passes to a point and
-  maps that to hue. This is what paints rich color across the dense body of the
-  set, where plain iteration banding goes flat.
-- **Normal-map "fake 3D" shading** — lights the surface using the escape
-  derivative, producing the feathery, embossed look of the reference art.
-  ([Wikipedia: normal map effect](https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set))
-- **Distance estimation** — `d = √(|z|²/|dz|²)·½·log|z|²` ([Inigo Quilez](https://iquilezles.org/articles/distancefractals/))
-  fades the exterior into a clean black void and can glow the finest filaments.
-- **Escape-angle decomposition** — adds hue grain along the filigree's grain.
-- **Gamma-correct supersampling** — the fractal is rendered at up to 8× per
-  axis and resolved down with a box filter that averages in *linear* light, so
-  edges are smooth and colors don't darken at boundaries.
+- **Stripe Average Coloring (SAC)** — the heart of the look. During iteration
+  it averages `½ + ½·sin(s·arg z)` over the orbit, then interpolates between the
+  averages including/excluding the last point using the fractional escape time.
+  That de-banding interpolation is the magic: the result is a perfectly smooth
+  scalar field whose contours follow the fractal's flow, so it reads as **3D
+  relief** with no explicit lighting and **no level-set seams**. It also fills
+  the "featureless" areas that plain iteration coloring leaves flat.
+  (Härkönen 2007; faithfully following [philthompson.me](https://philthompson.me/2023/Stripe-Average-Coloring.html).)
+- **Restrained, designed palettes** — the built-ins are dark→bright *ramps*
+  within a harmonious hue family (plus the perceptually-uniform `magma`/
+  `viridis`), so fine detail becomes coherent light/dark texture instead of
+  rainbow noise. This is what keeps dense regions from "smushing into grey."
+- **Distance-estimate negative space** — `d = √(|z|²/|dz|²)·½·log|z|²`
+  ([Inigo Quilez](https://iquilezles.org/articles/distancefractals/)) fades the
+  exterior to black, carving the dark voids that make the relief pop.
+- **Gamma-correct supersampling** — rendered at up to 8× per axis and resolved
+  with a box filter that averages in *linear* light, so edges are smooth and
+  colors don't darken at boundaries.
+
+Also available but **off by default** (they fight the clean SAC look): orbit
+traps (`--trap-color`), escape-angle hue (`--angle-color`), iteration-band hue
+(`--color-density`), and normal-map "fake 3D" shading (`--shading`, which the
+SAC reference warns adds "pointy" artifacts to smooth stripe areas).
 
 ## Build (macOS / Apple Silicon)
 
@@ -59,15 +68,18 @@ fractal help                  # full option reference
 ### Stills
 
 ```sh
-# The default look (bold double spirals)
+# The default look: grayscale stripe-average relief
 fractal render -o spiral.png
 
-# A Julia dendrite with the ice palette, deeper zoom, custom constant
-fractal render --cre -0.8 --cim 0.156 -p ice --zoom 1.4 --ssaa 6 -o ice.png
+# Same relief in blue, zoomed into a spiral
+fractal render --center-x 0.27 --center-y -0.05 --zoom 2.4 -p frost --ssaa 6 -o frost.png
 
-# Mandelbrot seahorse valley, custom hex palette
-fractal render --type mandelbrot --center-x -0.7436 --center-y 0.1318 \
-               --zoom 350 -i 2000 -p "#000000,#a01a00,#ff8c00,#ffe9b0" -o seahorse.png
+# Mandelbrot seahorse valley, warm palette
+fractal render --type mandelbrot --center-x -0.74364388703 --center-y 0.13182590421 \
+               --zoom 350 -i 2000 -p ember -o seahorse.png
+
+# A vibrant, deliberately busy look (orbit traps + iteration hue, looped palette)
+fractal render -p psychedelic --cyclic --trap-color 1.5 --color-density 0.1 --stripe-color 0 -o vivid.png
 ```
 
 ### Videos (20s loops)
@@ -82,18 +94,19 @@ fractal video --mode rotate -d 20 --fps 30 -o loop.mp4
 fractal video --type mandelbrot --mode zoom \
               --zoom-target-x -0.743 --zoom-target-y 0.131 --zoom-end 0.0005 -o dive.mp4
 
-# cycle: static fractal, palette sweeps one full cycle
-fractal video --mode cycle -p psychedelic -o cycle.mp4
+# cycle: static fractal, palette sweeps one full cycle (auto-loops the gradient)
+fractal video --mode cycle -p magma -o cycle.mp4
 ```
 
 ### Color
 
-Built-in palettes: `aurora` (default), `bloom`, `ember`, `fire`, `ice`,
-`psychedelic`, `mono`. Or pass your own comma-separated hex list — two or more
-stops, looped seamlessly:
+Built-in palettes — all designed as dark→bright ramps so stripe detail stays
+coherent: `noir` (default, grayscale), `frost` (blue), `magma`, `viridis`,
+`ember`, `ice`, `fire`, `aurora`, `bloom`, `psychedelic`, `mono`. Or pass your
+own comma-separated hex list (two or more stops):
 
 ```sh
-fractal render -p "#05010d,#ff7b54,#ffd45e,#3fd0c9" -o custom.png
+fractal render -p "#00040c,#2f6fb0,#eaf7ff" -o custom.png
 ```
 
 Key tuning knobs (see `fractal help` for the full list and defaults):
@@ -103,14 +116,13 @@ Key tuning knobs (see `fractal help` for the full list and defaults):
 | `--cre`, `--cim` | Julia constant — the single biggest lever on the shape |
 | `--zoom` / `--scale`, `--center-x/y` | Framing |
 | `-i, --iterations` | Detail vs. speed; raise it for deep zooms |
-| `--color-density` | Palette cycles per iteration (band frequency) |
-| `--trap-color`, `--trap-x/y` | Orbit-trap strength and location (body color) |
-| `--angle-color` | Escape-angle hue grain (keep low to avoid speckle) |
-| `--falloff` | How tightly color hugs the set before fading to black |
-| `--shading`, `--light-angle/height` | Normal-map emboss |
-| `--glow` | Distance-estimate filament glow |
+| `--stripe-freq` | Stripe density (4/6/8 best); the texture frequency |
+| `--stripe-contrast` | Stretch the stripe value across the gradient |
+| `--falloff` | How tightly the image hugs the set before fading to black |
 | `--ssaa` | Supersampling per axis (1–8); 4 = 16 samples/px |
 | `--saturation`, `--gamma`, `--inside` | Final grade and interior color |
+| `--cyclic` | Loop the gradient (for looped palettes / cycle videos) |
+| `--color-density`, `--trap-color`, `--angle-color`, `--shading` | Optional extra coloring (off by default) |
 
 ## How it's organized
 

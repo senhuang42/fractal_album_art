@@ -233,6 +233,9 @@ void Renderer::render(const RenderConfig& cfg) {
     setUniform1f(fractal_prog_, "uAngleColor", (float)cfg.angle_color);
     setUniform1f(fractal_prog_, "uTrapColor", (float)cfg.trap_color);
     setUniform2f(fractal_prog_, "uTrapPoint", (float)cfg.trap_x, (float)cfg.trap_y);
+    setUniform1f(fractal_prog_, "uStripeColor", (float)cfg.stripe_color);
+    setUniform1f(fractal_prog_, "uStripeFreq", (float)cfg.stripe_freq);
+    setUniform1f(fractal_prog_, "uStripeContrast", (float)cfg.stripe_contrast);
     setUniform3f(fractal_prog_, "uInsideColor", cfg.inside_color.r, cfg.inside_color.g, cfg.inside_color.b);
     setUniform1f(fractal_prog_, "uShading", (float)cfg.shading);
     setUniform1f(fractal_prog_, "uLightAngle", (float)cfg.light_angle);

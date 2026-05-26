@@ -17,25 +17,37 @@ int hexNibble(char c) {
     return -1;
 }
 
-// Built-in palettes. Each is designed to wrap cleanly (the cyclic flag closes
-// the loop) and to evoke the reference art: dark voids, jewel tones, warm
-// coral/gold highlights and cool teal accents.
+// Built-in palettes. Each is a *designed gradient* that ramps dark -> a
+// harmonious hue family -> bright, and loops cleanly (the cyclic flag closes
+// it). That is the key to coherent images: stripe/iteration detail becomes
+// light/dark texture within related hues, with dark "valleys" for negative
+// space — instead of the rainbow noise a full-spectrum hue wheel produces.
+// Several are the matplotlib perceptually-uniform colormaps, which are
+// engineered to stay coherent no matter how the scalar field varies.
 const std::map<std::string, std::vector<std::string>>& namedPalettes() {
     static const std::map<std::string, std::vector<std::string>> kPalettes = {
-        // The default: deep void -> violet -> pink -> coral -> gold -> teal.
-        // Balanced across hues so spread color doesn't skew to one family —
-        // matches the multi-hue spirals in the references.
-        {"aurora",      {"#0a0420", "#7b2ff7", "#e84393", "#ff6b4a", "#ffd45e", "#2ad4c8"}},
+        // The default: warm coherent "sunset" — deep indigo -> plum ->
+        // rose -> coral -> warm gold. Harmonious (no rainbow), like ref. art.
+        {"aurora",      {"#070313", "#2c1250", "#8e2f6e", "#e85c5c", "#ffb14e", "#ffe6a8"}},
+        // Cool steel blue -> white on black (matches the blue spiral reference).
+        {"frost",       {"#00040c", "#082047", "#2f6fb0", "#7fbfe6", "#eaf7ff", "#ffffff"}},
+        // matplotlib magma — perceptually uniform, black -> purple -> orange.
+        {"magma",       {"#000004", "#3b0f70", "#8c2981", "#de4968", "#fe9f6d", "#fcfdbf"}},
+        // matplotlib viridis — perceptually uniform, indigo -> teal -> yellow.
+        {"viridis",     {"#440154", "#414487", "#2a788e", "#22a884", "#7ad151", "#fde725"}},
         // Warm volcanic.
         {"ember",       {"#0a0200", "#3d0c02", "#9a1f0b", "#e8540c", "#ffae42", "#fff1c1"}},
         // Cool glacial blues and whites.
         {"ice",         {"#01030f", "#0a2a5e", "#1f6fb2", "#56c4e8", "#b8f0ff", "#ffffff"}},
-        // Saturated rainbow on near-black.
-        {"psychedelic", {"#000010", "#ff006e", "#fb5607", "#ffbe0b", "#8ac926", "#3a86ff", "#8338ec"}},
         // Classic flame.
         {"fire",        {"#000000", "#420a00", "#a01a00", "#ff4d00", "#ffb000", "#ffffff"}},
+        // Grayscale relief (the default) — black void, grey fur, white cores.
+        // Faithful to the reference SAC article's monochrome 3D look.
+        {"noir",        {"#000000", "#101010", "#454545", "#9a9a9a", "#f2f2f2", "#ffffff"}},
         // Soft pastel pinks/golds on black (matches reference image 2).
         {"bloom",       {"#000000", "#5e2750", "#c8638f", "#f6b8c4", "#f0d8a8", "#cf9b6b", "#dff0d0"}},
+        // Saturated rainbow on near-black — the deliberately vibrant option.
+        {"psychedelic", {"#000010", "#ff006e", "#fb5607", "#ffbe0b", "#8ac926", "#3a86ff", "#8338ec"}},
         // Monochrome grayscale.
         {"mono",        {"#000000", "#ffffff"}},
     };
