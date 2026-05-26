@@ -1,0 +1,23 @@
+# Build artifacts
+*.o
+*.d
+*.dSYM/
+/fractal
+/run_tests
+
+# Rendered output
+*.png
+*.mp4
+*.gif
+demo.*
+
+# ...but keep the README gallery
+!assets/*.png
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp

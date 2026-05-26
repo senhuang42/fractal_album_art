@@ -1,0 +1,266 @@
+#include "cli.h"
+#include "palette.h"
+
+#include <cstdlib>
+#include <sstream>
+#include <stdexcept>
+
+namespace fractal {
+
+namespace {
+
+// Small helper to walk the argument list and pull typed values.
+struct Cursor {
+    const std::vector<std::string>& args;
+    size_t i;
+    std::string error;
+
+    bool hasNext() const { return i < args.size(); }
+
+    // Consume the next token as a string value for flag `flag`.
+    bool nextStr(const std::string& flag, std::string& out) {
+        if (i >= args.size()) { error = "missing value for " + flag; return false; }
+        out = args[i++];
+        return true;
+    }
+    bool nextDouble(const std::string& flag, double& out) {
+        std::string s;
+        if (!nextStr(flag, s)) return false;
+        try { size_t pos; out = std::stod(s, &pos);
+              if (pos != s.size()) throw std::invalid_argument(""); }
+        catch (...) { error = "expected a number for " + flag + ", got '" + s + "'"; return false; }
+        return true;
+    }
+    bool nextInt(const std::string& flag, int& out) {
+        std::string s;
+        if (!nextStr(flag, s)) return false;
+        try { size_t pos; out = std::stoi(s, &pos);
+              if (pos != s.size()) throw std::invalid_argument(""); }
+        catch (...) { error = "expected an integer for " + flag + ", got '" + s + "'"; return false; }
+        return true;
+    }
+};
+
+// Parse "WIDTHxHEIGHT" (e.g. "1920x1080").
+bool parseSize(const std::string& s, int& w, int& h) {
+    size_t x = s.find_first_of("xX");
+    if (x == std::string::npos) return false;
+    try {
+        w = std::stoi(s.substr(0, x));
+        h = std::stoi(s.substr(x + 1));
+    } catch (...) { return false; }
+    return w > 0 && h > 0;
+}
+
+} // namespace
+
+std::string helpText() {
+    std::ostringstream o;
+    o <<
+R"(fractal — a GPU fractal visualizer for stunning Julia & Mandelbrot art.
+
+USAGE
+  fractal render [options]      Render a single still image (PNG).
+  fractal video  [options]      Render a seamless animation (MP4, needs ffmpeg).
+  fractal help                  Show this help.
+
+COMMON OPTIONS
+  -t, --type <julia|mandelbrot>   Fractal family            (default: julia)
+      --cre <float>               Julia constant real part  (default: -0.512511)
+      --cim <float>               Julia constant imag part  (default: 0.521295)
+      --center-x <float>          View center x             (default: 0)
+      --center-y <float>          View center y             (default: 0)
+      --scale <float>             View half-height in plane (default: 1.35)
+      --zoom <float>              Zoom factor (scale = 1.35/zoom)
+  -i, --iterations <int>          Max iterations            (default: 400)
+      --exponent <float>          z^exponent + c            (default: 2)
+      --bailout <float>           Escape radius             (default: 256)
+  -w, --width <int>               Image width px            (default: 1600)
+      --height <int>              Image height px           (default: 1600)
+      --size <WxH>                Set width and height at once
+      --ssaa <int>                Supersampling factor      (default: 4)
+  -p, --palette <spec>            Named palette or hex list (default: aurora)
+      --no-cyclic                 Don't close the gradient loop
+      --color-density <float>     Palette cycles per iter   (default: 0.18)
+      --color-offset <float>      Palette phase shift [0,1) (default: 0)
+      --angle-color <float>       Escape-angle hue weight   (default: 0.1)
+      --trap-color <float>        Orbit-trap hue weight     (default: 1.6)
+      --trap-x <float>            Orbit-trap point x        (default: 0)
+      --trap-y <float>            Orbit-trap point y        (default: 0)
+      --inside <hex>              Color of points in the set(default: #000000)
+      --saturation <float>        Saturation grade          (default: 1.3)
+      --gamma <float>             Gamma grade               (default: 1.05)
+      --shading <float>           Normal-map emboss 0..1    (default: 0.6)
+      --light-angle <float>       Light direction degrees   (default: 45)
+      --light-height <float>      Light elevation           (default: 1.2)
+      --glow <float>              Distance-estimate glow     (default: 0)
+      --falloff <float>           Exterior fade-to-void      (default: 0.009)
+  -o, --output <path>             Output file
+
+VIDEO OPTIONS
+      --mode <rotate|zoom|cycle>  Animation type            (default: rotate)
+  -d, --duration <float>          Seconds                   (default: 20)
+      --fps <int>                 Frames per second         (default: 30)
+      --crf <int>                 x264 quality, lower=better(default: 18)
+      --rotate-radius <float>     |c| for rotate mode       (default: 0.7885)
+      --zoom-end <float>          End scale for zoom mode    (default: 0.005)
+      --zoom-target-x <float>     Zoom target x             (default: 0)
+      --zoom-target-y <float>     Zoom target y             (default: 0)
+
+PALETTES
+  )";
+    auto names = builtinPaletteNames();
+    for (size_t i = 0; i < names.size(); ++i)
+        o << names[i] << (i + 1 < names.size() ? ", " : "");
+    o << R"(
+  ...or a custom comma-separated hex list, e.g. "#05010d,#ff7b54,#3fd0c9".
+
+EXAMPLES
+  fractal render -p aurora -o spiral.png
+  fractal render --cre -0.8 --cim 0.156 --zoom 1.4 --ssaa 4 -o dendrite.png
+  fractal video --mode rotate -d 20 --fps 30 -o loop.mp4
+  fractal video --type mandelbrot --mode zoom --zoom-target-x -0.743 \
+                --zoom-target-y 0.131 --zoom-end 0.0005 -o dive.mp4
+)";
+    return o.str();
+}
+
+ParsedArgs parseArgs(const std::vector<std::string>& args) {
+    ParsedArgs out;
+
+    if (args.empty()) { out.kind = CommandKind::Help; return out; }
+
+    const std::string& cmd = args[0];
+    if (cmd == "help" || cmd == "--help" || cmd == "-h") {
+        out.kind = CommandKind::Help;
+        return out;
+    }
+    if (cmd == "render")      out.kind = CommandKind::Render;
+    else if (cmd == "video")  out.kind = CommandKind::Video;
+    else { out.error = "unknown command '" + cmd + "' (expected 'render' or 'video')"; return out; }
+
+    // Parse everything into a VideoConfig; the Render path uses the base slice.
+    VideoConfig cfg;
+    std::string palette_spec = "aurora";
+    bool output_set = false;
+    bool ssaa_set = false;
+
+    Cursor cur{args, 1, ""};
+    while (cur.hasNext()) {
+        std::string flag = cur.args[cur.i++];
+        auto fail = [&](const std::string& m) { out.error = m; };
+
+        if (flag == "--help" || flag == "-h") { out.kind = CommandKind::Help; return out; }
+
+        else if (flag == "-t" || flag == "--type") {
+            std::string v; if (!cur.nextStr(flag, v)) break;
+            if (v == "julia") cfg.type = FractalType::Julia;
+            else if (v == "mandelbrot") cfg.type = FractalType::Mandelbrot;
+            else { fail("--type must be 'julia' or 'mandelbrot', got '" + v + "'"); break; }
+        }
+        else if (flag == "--cre") { if (!cur.nextDouble(flag, cfg.julia_cre)) break; }
+        else if (flag == "--cim") { if (!cur.nextDouble(flag, cfg.julia_cim)) break; }
+        else if (flag == "--center-x" || flag == "--cx") { if (!cur.nextDouble(flag, cfg.center_x)) break; }
+        else if (flag == "--center-y" || flag == "--cy") { if (!cur.nextDouble(flag, cfg.center_y)) break; }
+        else if (flag == "--scale") { if (!cur.nextDouble(flag, cfg.scale)) break; }
+        else if (flag == "--zoom") {
+            double z; if (!cur.nextDouble(flag, z)) break;
+            if (z <= 0) { fail("--zoom must be positive"); break; }
+            cfg.scale = 1.35 / z;
+        }
+        else if (flag == "-i" || flag == "--iterations" || flag == "--iter") {
+            if (!cur.nextInt(flag, cfg.max_iter)) break;
+            if (cfg.max_iter < 1) { fail("--iterations must be >= 1"); break; }
+        }
+        else if (flag == "--exponent") { if (!cur.nextDouble(flag, cfg.exponent)) break; }
+        else if (flag == "--bailout")  { if (!cur.nextDouble(flag, cfg.bailout)) break; }
+        else if (flag == "-w" || flag == "--width")  {
+            if (!cur.nextInt(flag, cfg.width)) break;
+            if (cfg.width < 1) { fail("--width must be >= 1"); break; }
+        }
+        else if (flag == "--height") {
+            if (!cur.nextInt(flag, cfg.height)) break;
+            if (cfg.height < 1) { fail("--height must be >= 1"); break; }
+        }
+        else if (flag == "--size") {
+            std::string v; if (!cur.nextStr(flag, v)) break;
+            if (!parseSize(v, cfg.width, cfg.height)) { fail("--size must be WxH, e.g. 1920x1080"); break; }
+        }
+        else if (flag == "--ssaa") {
+            if (!cur.nextInt(flag, cfg.ssaa)) break;
+            if (cfg.ssaa < 1 || cfg.ssaa > 8) { fail("--ssaa must be between 1 and 8"); break; }
+            ssaa_set = true;
+        }
+        else if (flag == "-p" || flag == "--palette") { if (!cur.nextStr(flag, palette_spec)) break; }
+        else if (flag == "--no-cyclic") { cfg.cyclic = false; }
+        else if (flag == "--color-density") { if (!cur.nextDouble(flag, cfg.color_density)) break; }
+        else if (flag == "--color-offset")  { if (!cur.nextDouble(flag, cfg.color_offset)) break; }
+        else if (flag == "--angle-color")   { if (!cur.nextDouble(flag, cfg.angle_color)) break; }
+        else if (flag == "--trap-color")    { if (!cur.nextDouble(flag, cfg.trap_color)) break; }
+        else if (flag == "--trap-x")        { if (!cur.nextDouble(flag, cfg.trap_x)) break; }
+        else if (flag == "--trap-y")        { if (!cur.nextDouble(flag, cfg.trap_y)) break; }
+        else if (flag == "--inside") {
+            std::string v; if (!cur.nextStr(flag, v)) break;
+            if (!parseHexColor(v, cfg.inside_color)) { fail("--inside must be a hex color, got '" + v + "'"); break; }
+        }
+        else if (flag == "--saturation") { if (!cur.nextDouble(flag, cfg.saturation)) break; }
+        else if (flag == "--gamma")      { if (!cur.nextDouble(flag, cfg.gamma)) break; }
+        else if (flag == "--shading")    { if (!cur.nextDouble(flag, cfg.shading)) break; }
+        else if (flag == "--light-angle"){ if (!cur.nextDouble(flag, cfg.light_angle)) break; }
+        else if (flag == "--light-height"){ if (!cur.nextDouble(flag, cfg.light_height)) break; }
+        else if (flag == "--glow")       { if (!cur.nextDouble(flag, cfg.glow)) break; }
+        else if (flag == "--falloff")    { if (!cur.nextDouble(flag, cfg.falloff)) break; }
+        else if (flag == "-o" || flag == "--output") {
+            if (!cur.nextStr(flag, cfg.output)) break;
+            output_set = true;
+        }
+        // ---- video-only ----
+        else if (flag == "--mode") {
+            std::string v; if (!cur.nextStr(flag, v)) break;
+            if (v == "rotate") cfg.mode = AnimMode::Rotate;
+            else if (v == "zoom") cfg.mode = AnimMode::Zoom;
+            else if (v == "cycle") cfg.mode = AnimMode::Cycle;
+            else { fail("--mode must be rotate, zoom, or cycle; got '" + v + "'"); break; }
+        }
+        else if (flag == "-d" || flag == "--duration") {
+            if (!cur.nextDouble(flag, cfg.duration)) break;
+            if (cfg.duration <= 0) { fail("--duration must be positive"); break; }
+        }
+        else if (flag == "--fps") {
+            if (!cur.nextInt(flag, cfg.fps)) break;
+            if (cfg.fps < 1) { fail("--fps must be >= 1"); break; }
+        }
+        else if (flag == "--crf") { if (!cur.nextInt(flag, cfg.crf)) break; }
+        else if (flag == "--rotate-radius") { if (!cur.nextDouble(flag, cfg.rotate_radius)) break; }
+        else if (flag == "--zoom-end")      { if (!cur.nextDouble(flag, cfg.zoom_end)) break; }
+        else if (flag == "--zoom-target-x") { if (!cur.nextDouble(flag, cfg.zoom_target_x)) break; }
+        else if (flag == "--zoom-target-y") { if (!cur.nextDouble(flag, cfg.zoom_target_y)) break; }
+        else { fail("unknown option '" + flag + "'"); break; }
+    }
+
+    if (!cur.error.empty() && out.error.empty()) out.error = cur.error;
+    if (!out.error.empty()) return out;
+    if (out.kind == CommandKind::Help) return out;
+
+    // Resolve palette.
+    if (!parsePalette(palette_spec, cfg.palette)) {
+        out.error = "invalid palette '" + palette_spec +
+                    "' (use a built-in name or >=2 comma-separated hex colors)";
+        return out;
+    }
+
+    // Per-command output default.
+    if (!output_set) cfg.output = (out.kind == CommandKind::Video) ? "fractal.mp4" : "fractal.png";
+
+    // Video renders hundreds of frames; default to lighter supersampling.
+    if (out.kind == CommandKind::Video && !ssaa_set) cfg.ssaa = 2;
+
+    if (out.kind == CommandKind::Render) {
+        out.render = static_cast<RenderConfig>(cfg); // slice base
+    } else {
+        out.video = cfg;
+    }
+    return out;
+}
+
+} // namespace fractal

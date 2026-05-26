@@ -1,0 +1,82 @@
+// test_cli.cpp — argument parsing into RenderConfig / VideoConfig.
+#include "test_util.h"
+#include "cli.h"
+
+#include <cmath>
+
+using namespace fractal;
+
+static ParsedArgs parse(std::vector<std::string> a) { return parseArgs(a); }
+
+void test_cli() {
+    // ---- dispatch ----
+    CHECK(parse({}).kind == CommandKind::Help);
+    CHECK(parse({"help"}).kind == CommandKind::Help);
+    CHECK(parse({"-h"}).kind == CommandKind::Help);
+    CHECK(!parse({"bogus"}).error.empty()); // unknown command
+
+    // ---- render defaults ----
+    {
+        auto p = parse({"render"});
+        CHECK(p.error.empty());
+        CHECK(p.kind == CommandKind::Render);
+        CHECK(p.render.type == FractalType::Julia);
+        CHECK(p.render.output == "fractal.png");
+        CHECK(p.render.ssaa == 4);
+        CHECK(p.render.max_iter == 400);
+        CHECK(p.render.palette.size() >= 2); // resolved from "aurora"
+    }
+
+    // ---- video defaults ----
+    {
+        auto p = parse({"video"});
+        CHECK(p.error.empty());
+        CHECK(p.kind == CommandKind::Video);
+        CHECK(p.video.output == "fractal.mp4");
+        CHECK(p.video.mode == AnimMode::Rotate);
+        CHECK(p.video.ssaa == 2); // lowered for video
+        CHECK(p.video.total_frames() == 600); // 20s * 30fps
+    }
+
+    // ---- common options ----
+    {
+        auto p = parse({"render", "-t", "mandelbrot", "--zoom", "2",
+                        "-i", "100", "-o", "x.png", "--size", "800x600"});
+        CHECK(p.error.empty());
+        CHECK(p.render.type == FractalType::Mandelbrot);
+        CHECK_NEAR(p.render.scale, 1.35 / 2.0, 1e-9);
+        CHECK(p.render.max_iter == 100);
+        CHECK(p.render.output == "x.png");
+        CHECK(p.render.width == 800 && p.render.height == 600);
+    }
+
+    // ---- custom palette + fidelity knobs ----
+    {
+        auto p = parse({"render", "-p", "#000000,#ff8800,#00ffcc",
+                        "--shading", "0.8", "--glow", "0.3"});
+        CHECK(p.error.empty());
+        CHECK(p.render.palette.size() == 3);
+        CHECK_NEAR(p.render.shading, 0.8, 1e-9);
+        CHECK_NEAR(p.render.glow, 0.3, 1e-9);
+    }
+
+    // ---- video options ----
+    {
+        auto p = parse({"video", "--mode", "zoom", "--fps", "24", "-d", "10",
+                        "--zoom-end", "0.001"});
+        CHECK(p.error.empty());
+        CHECK(p.video.mode == AnimMode::Zoom);
+        CHECK(p.video.fps == 24);
+        CHECK(p.video.total_frames() == 240);
+        CHECK_NEAR(p.video.zoom_end, 0.001, 1e-12);
+    }
+
+    // ---- error handling ----
+    CHECK(!parse({"render", "--type", "bogus"}).error.empty());
+    CHECK(!parse({"render", "-i", "abc"}).error.empty());     // non-integer
+    CHECK(!parse({"render", "--palette", "nope"}).error.empty());
+    CHECK(!parse({"render", "--ssaa", "99"}).error.empty());  // out of range
+    CHECK(!parse({"render", "--zoom", "-1"}).error.empty());  // non-positive
+    CHECK(!parse({"render", "--unknownflag"}).error.empty());
+    CHECK(!parse({"render", "--scale"}).error.empty());       // missing value
+}
