@@ -9,10 +9,17 @@ The coloring is the interesting part — see [how it works](#how-it-works).
 
 ![grayscale stripe-average spiral](assets/hero_noir.png)
 
-| | |
-|---|---|
-| ![blue spiral](assets/julia_frost.png) | ![magma spiral](assets/julia_magma.png) |
-| ![ember seahorse](assets/mandel_ember.png) | *…or whatever you can dial in* |
+| | | |
+|---|---|---|
+| ![blue spiral](assets/julia_frost.png) | ![magma spiral](assets/julia_magma.png) | ![ember seahorse](assets/mandel_ember.png) |
+| ![ocean spiral](assets/julia_ocean.png) | ![sunset spiral](assets/julia_sunset.png) | ![viridis spiral](assets/julia_viridian.png) |
+
+Video examples: a seamless [rotating loop](assets/loop_magma.mp4) and a
+[rapid zoom](assets/zoom_seahorse.mp4) into the seahorse valley.
+
+There are a bunch of one-word **presets** — here's every one:
+
+![preset gallery](assets/presets.png)
 
 ## Build
 
@@ -36,40 +43,50 @@ fractal video  [options]      # seamless loop -> MP4
 fractal help                  # every option
 ```
 
-Some stills to start from:
+The fastest way to something good is a preset:
 
 ```sh
-# default look (grayscale stripe-average relief)
-fractal render -o spiral.png
+fractal render -P frostbite -o spiral.png        # blue spiral
+fractal render -P ember-seahorse --ssaa 6 -o seahorse.png
+fractal render -P dusk -o sunset.png             # warm spiral
+fractal help                                     # lists all presets
+```
 
-# same thing in blue, zoomed into a spiral
-fractal render --cre -0.7269 --cim 0.1889 --scale 1.1 -i 4000 -p frost -o frost.png
+Presets are just a starting point — override any field with a flag, e.g.
+`fractal render -P frostbite --cre -0.8 -p ocean`. Or build it up by hand:
 
-# mandelbrot seahorse valley
-fractal render --type mandelbrot --center-x -0.74364388703 --center-y 0.13182590421 \
-               --zoom 350 -i 2000 -p ember -o seahorse.png
+```sh
+fractal render --cre -0.7269 --cim 0.1889 --scale 1.1 -i 4000 -p magma -o magma.png
 ```
 
 A 20-second loop:
 
 ```sh
 # the julia constant orbits the origin, so it loops perfectly
-fractal video --mode rotate -d 20 --fps 30 -o loop.mp4
+fractal video --mode rotate -p magma -d 20 --fps 30 -o loop.mp4
 
-# or dive into the mandelbrot
+# rapid zoom into the seahorse valley
 fractal video --type mandelbrot --mode zoom \
-              --zoom-target-x -0.743 --zoom-target-y 0.131 --zoom-end 0.0005 -o dive.mp4
+              --center-x -0.7453 --center-y 0.1127 \
+              --zoom-target-x -0.7453 --zoom-target-y 0.1127 \
+              --scale 0.2 --zoom-end 0.0013 -i 3000 -p inferno -d 7 -o zoom.mp4
 ```
 
+For zooms, keep the target on a detail-rich spot and don't go below ~`0.001`
+scale — the shader is 32-bit float, so it pixelates past roughly 10,000×.
+
 Palettes are dark→bright ramps so detail stays readable instead of turning into
-rainbow mush: `noir` (default), `frost`, `magma`, `viridis`, `ember`, `ice`,
-`fire`, `aurora`, `bloom`, `psychedelic`, `mono`. Or pass your own hex list,
-e.g. `-p "#00040c,#2f6fb0,#eaf7ff"`.
+rainbow mush. The restrained ones: `noir` (default), `frost`, `magma`,
+`viridis`, `inferno`, `plasma`, `cividis`, `ember`, `ice`, `fire`, `mono`. The
+wider-gamut themes: `sunset`, `ocean`, `neon`, `candy`, `gold`, `emerald`,
+`vapor`, `aurora`, `bloom`, `psychedelic`. Or pass your own hex list, e.g.
+`-p "#00040c,#2f6fb0,#eaf7ff"`.
 
 The knobs worth knowing (`fractal help` has the rest):
 
 | flag | what it does |
 |---|---|
+| `-P, --preset` | start from a curated combo (run `fractal help` for the list) |
 | `--cre`, `--cim` | the Julia constant — biggest lever on the shape |
 | `--zoom` / `--scale`, `--center-x/y` | where you're looking |
 | `-i, --iterations` | more = finer filaments resolved (deep zooms need a lot) |
@@ -77,6 +94,7 @@ The knobs worth knowing (`fractal help` has the rest):
 | `--color-density` | iteration-layer ramp; `0` = stripe layer only |
 | `--stripe-color` | stripe overlay weight; `0` = iteration layer only |
 | `--bloom` | luminous glow on bright areas (`0` = off) |
+| `--black-point` | crush near-blacks so empty regions stay truly black |
 | `--shading`, `--specular` | optional height-field lighting (off by default) |
 | `--ssaa` | supersampling per axis (1–8) |
 

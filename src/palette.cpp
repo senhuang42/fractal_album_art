@@ -46,6 +46,27 @@ const std::map<std::string, std::vector<std::string>>& namedPalettes() {
         {"noir",        {"#000000", "#101010", "#454545", "#9a9a9a", "#f2f2f2", "#ffffff"}},
         // Soft pastel pinks/golds on black (matches reference image 2).
         {"bloom",       {"#000000", "#5e2750", "#c8638f", "#f6b8c4", "#f0d8a8", "#cf9b6b", "#dff0d0"}},
+        // matplotlib inferno / plasma / cividis — perceptually uniform.
+        {"inferno",     {"#000004", "#420a68", "#932667", "#dd513a", "#fca50a", "#fcffa4"}},
+        {"plasma",      {"#0d0887", "#6a00a8", "#b12a90", "#e16462", "#fca636", "#f0f921"}},
+        {"cividis",     {"#00204d", "#31446b", "#666970", "#958f78", "#cbba69", "#ffea46"}},
+        // Wider-gamut designed themes (span more of the spectrum, still tasteful).
+        {"sunset",      {"#1a0633", "#5e1a6b", "#c02a6e", "#ff6b4a", "#ffb45e", "#ffe9a8"}},
+        {"ocean",       {"#001028", "#003a5c", "#1f7a8c", "#52d6c4", "#bdf0e0", "#ffffff"}},
+        {"neon",        {"#050008", "#ff0080", "#7a00ff", "#00e5ff", "#00ff95", "#faff00"}},
+        {"candy",       {"#190a2e", "#ff5fa2", "#ff9ec7", "#ffd6e8", "#a0e7ff", "#7afcff"}},
+        {"gold",        {"#0a0600", "#3d2600", "#8a5a00", "#d49a1a", "#ffd86b", "#fff4cf"}},
+        {"emerald",     {"#001a10", "#00402a", "#0a7a50", "#3fd089", "#b8f0c8", "#ffffff"}},
+        {"vapor",       {"#1a0b2e", "#7b2ff7", "#f72585", "#4cc9f0", "#80ffea", "#ffffff"}},
+        // Popular design color schemes, arranged as dark->bright ramps.
+        {"synthwave",   {"#100024", "#3b0f6f", "#b5179e", "#ff2a6d", "#ff9e64", "#fff3b0"}},
+        {"nord",        {"#11131a", "#2e3440", "#434c5e", "#5e81ac", "#88c0d0", "#eceff4"}},
+        {"dracula",     {"#15161e", "#282a36", "#6272a4", "#bd93f9", "#ff79c6", "#f1fa8c"}},
+        {"gruvbox",     {"#1d2021", "#3c1a0a", "#cc241d", "#d65d0e", "#d79921", "#fbf1c7"}},
+        {"autumn",      {"#1a0e08", "#4a1c10", "#8a3324", "#c1440e", "#e08e0b", "#f7d08a"}},
+        {"rosegold",    {"#1a0d12", "#4a1f2e", "#8a3a52", "#c76b7e", "#e8a9a0", "#f7e6dd"}},
+        {"galaxy",      {"#05010f", "#1a1248", "#4b2a9e", "#8e44ad", "#c06ff2", "#ffe6ff"}},
+        {"mint",        {"#04140f", "#0a3d2e", "#138a5e", "#3fd089", "#9af0c8", "#eafff5"}},
         // Saturated rainbow on near-black — the deliberately vibrant option.
         {"psychedelic", {"#000010", "#ff006e", "#fb5607", "#ffbe0b", "#8ac926", "#3a86ff", "#8338ec"}},
         // Monochrome grayscale.

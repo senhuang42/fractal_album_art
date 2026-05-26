@@ -273,6 +273,7 @@ void Renderer::render(const RenderConfig& cfg) {
     setUniform1i(downsample_prog_, "uSSAA", ssaa_);
     setUniform1f(downsample_prog_, "uSaturation", (float)cfg.saturation);
     setUniform1f(downsample_prog_, "uGamma", (float)cfg.gamma);
+    setUniform1f(downsample_prog_, "uBlackPoint", (float)cfg.black_point);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
 

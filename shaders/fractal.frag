@@ -160,7 +160,7 @@ void main() {
             // the structure while the void stays black.
             vec3  stripeCol = texture(uPalette, vec2(stripeS, 0.5)).rgb;
             vec3  iterCol   = texture(uPalette, vec2(iterS,   0.5)).rgb;
-            float gate = smoothstep(0.12, 0.55, iterS);
+            float gate = smoothstep(0.20, 0.62, iterS);
             col = mix(iterCol, stripeCol * gate, uStripeColor);
         }
     }

@@ -87,6 +87,7 @@ struct RenderConfig {
     Color  inside_color  = {0,0,0};    // color for points in the set
     double saturation    = 1.3;        // final grade
     double gamma         = 1.05;       // final grade (1 = none)
+    double black_point   = 0.08;       // crush near-blacks so empties are black
 
     // Blinn-Phong lighting of the relief as a height field (diffuse + specular).
     // Off by default (it can darken the bright relief), but it's a proper

@@ -71,6 +71,28 @@ void test_cli() {
         CHECK_NEAR(p.video.zoom_end, 0.001, 1e-12);
     }
 
+    // ---- presets ----
+    {
+        auto p = parse({"render", "-P", "frostbite"});
+        CHECK(p.error.empty());
+        CHECK(p.render.type == FractalType::Julia);
+        CHECK_NEAR(p.render.julia_cre, -0.7269, 1e-9);
+        CHECK(p.render.max_iter == 3000);
+        CHECK(p.render.palette.size() >= 2); // frost resolved
+    }
+    {
+        auto p = parse({"render", "--preset", "ember-seahorse"});
+        CHECK(p.error.empty());
+        CHECK(p.render.type == FractalType::Mandelbrot);
+    }
+    {
+        // explicit flags override the preset regardless of order
+        auto p = parse({"render", "-P", "frostbite", "--cre", "-0.8"});
+        CHECK(p.error.empty());
+        CHECK_NEAR(p.render.julia_cre, -0.8, 1e-9);
+    }
+    CHECK(!parse({"render", "-P", "bogus"}).error.empty());
+
     // ---- error handling ----
     CHECK(!parse({"render", "--type", "bogus"}).error.empty());
     CHECK(!parse({"render", "-i", "abc"}).error.empty());     // non-integer

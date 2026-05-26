@@ -41,6 +41,54 @@ struct Cursor {
     }
 };
 
+// Curated presets: a known-good fractal + framing + palette combination.
+// Sets the base config; any explicit flags the user also passes win over it.
+// `palette_spec` is written here and resolved later.
+bool applyPreset(const std::string& name, VideoConfig& c, std::string& palette_spec) {
+    auto julia = [&](double cre, double cim, double scale, int iter, const char* pal) {
+        c.type = FractalType::Julia; c.julia_cre = cre; c.julia_cim = cim;
+        c.center_x = 0.0; c.center_y = 0.0; c.scale = scale; c.max_iter = iter;
+        palette_spec = pal;
+    };
+    auto mandel = [&](double cx, double cy, double scale, int iter, const char* pal) {
+        c.type = FractalType::Mandelbrot; c.center_x = cx; c.center_y = cy;
+        c.scale = scale; c.max_iter = iter; palette_spec = pal;
+    };
+
+    if      (name == "noir-spiral")    julia(-0.7269,   0.1889,   1.10, 3000, "noir");
+    else if (name == "frostbite")      julia(-0.7269,   0.1889,   1.10, 3000, "frost");
+    else if (name == "molten")         julia(-0.74543,  0.11301,  1.25, 4000, "magma");
+    else if (name == "deep-ocean")     julia(-0.8,      0.156,    1.30, 3000, "ocean");
+    else if (name == "dusk")           julia(-0.512511, 0.521295, 1.30, 1800, "sunset");
+    else if (name == "neon-dust")      julia( 0.285,    0.01,     1.60, 1500, "neon");
+    else if (name == "viridian")       julia(-0.70176, -0.3842,   1.20, 3000, "viridis");
+    else if (name == "candy-swirl")    julia(-0.7269,   0.1889,   1.10, 3000, "candy");
+    else if (name == "ember-seahorse") mandel(-0.74364388703, 0.13182590421, 1.35 / 350.0, 2000, "ember");
+    else if (name == "inferno-valley") mandel(-0.748, 0.1, 1.35 / 11.0, 2500, "inferno");
+    // Presets built on popular color themes.
+    else if (name == "synthwave")      julia(-0.512511, 0.521295, 1.30, 2000, "synthwave");
+    else if (name == "nord")           julia(-0.74543,  0.11301,  1.25, 3000, "nord");
+    else if (name == "dracula")        julia(-0.7269,   0.1889,   1.10, 3000, "dracula");
+    else if (name == "gruvbox")        mandel(-0.74364388703, 0.13182590421, 1.35 / 350.0, 2000, "gruvbox");
+    else if (name == "autumn")         julia(-0.8,      0.156,    1.30, 2500, "autumn");
+    else if (name == "rosegold")       julia(-0.512511, 0.521295, 1.30, 2000, "rosegold");
+    else if (name == "galaxy")         julia(-0.123,    0.745,    1.40, 2000, "galaxy");
+    else if (name == "mint")           julia(-0.70176, -0.3842,   1.20, 3000, "mint");
+    else return false;
+    return true;
+}
+
+// Names of the built-in presets, for help text.
+const std::vector<std::string>& presetNames() {
+    static const std::vector<std::string> kNames = {
+        "noir-spiral", "frostbite", "molten", "deep-ocean", "dusk",
+        "neon-dust", "viridian", "candy-swirl", "ember-seahorse", "inferno-valley",
+        "synthwave", "nord", "dracula", "gruvbox", "autumn", "rosegold",
+        "galaxy", "mint",
+    };
+    return kNames;
+}
+
 // Parse "WIDTHxHEIGHT" (e.g. "1920x1080").
 bool parseSize(const std::string& s, int& w, int& h) {
     size_t x = s.find_first_of("xX");
@@ -65,6 +113,7 @@ USAGE
   fractal help                  Show this help.
 
 COMMON OPTIONS
+  -P, --preset <name>             Start from a curated preset (see PRESETS)
   -t, --type <julia|mandelbrot>   Fractal family            (default: julia)
       --cre <float>               Julia constant real part  (default: -0.512511)
       --cim <float>               Julia constant imag part  (default: 0.521295)
@@ -93,6 +142,7 @@ COMMON OPTIONS
       --inside <hex>              Color of points in the set(default: #000000)
       --saturation <float>        Saturation grade          (default: 1.3)
       --gamma <float>             Gamma grade               (default: 1.05)
+      --black-point <float>       Crush near-blacks to black (default: 0.08)
       --shading <float>           Diffuse light strength    (default: 0)
       --light-angle <float>       Light azimuth degrees     (default: 135)
       --light-height <float>      Light elevation           (default: 1.0)
@@ -123,7 +173,16 @@ PALETTES
     o << R"(
   ...or a custom comma-separated hex list, e.g. "#05010d,#ff7b54,#3fd0c9".
 
+PRESETS (use with -P; override any field with explicit flags)
+  )";
+    auto presets = presetNames();
+    for (size_t i = 0; i < presets.size(); ++i)
+        o << presets[i] << (i + 1 < presets.size() ? ", " : "");
+    o << R"(
+
 EXAMPLES
+  fractal render -P frostbite -o spiral.png
+  fractal render -P ember-seahorse --ssaa 6 -o seahorse.png
   fractal render -p aurora -o spiral.png
   fractal render --cre -0.8 --cim 0.156 --zoom 1.4 --ssaa 4 -o dendrite.png
   fractal video --mode rotate -d 20 --fps 30 -o loop.mp4
@@ -153,6 +212,17 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
     bool output_set = false;
     bool ssaa_set = false;
 
+    // Apply a preset first (as the base) so explicit flags can override it,
+    // regardless of where --preset appears in the arguments.
+    for (size_t k = 1; k + 1 < args.size(); ++k) {
+        if (args[k] == "--preset" || args[k] == "-P") {
+            if (!applyPreset(args[k + 1], cfg, palette_spec)) {
+                out.error = "unknown preset '" + args[k + 1] + "'";
+                return out;
+            }
+        }
+    }
+
     Cursor cur{args, 1, ""};
     while (cur.hasNext()) {
         std::string flag = cur.args[cur.i++];
@@ -160,6 +230,10 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
 
         if (flag == "--help" || flag == "-h") { out.kind = CommandKind::Help; return out; }
 
+        // Already applied in the pre-scan above; just consume its value.
+        else if (flag == "--preset" || flag == "-P") {
+            std::string v; if (!cur.nextStr(flag, v)) break;
+        }
         else if (flag == "-t" || flag == "--type") {
             std::string v; if (!cur.nextStr(flag, v)) break;
             if (v == "julia") cfg.type = FractalType::Julia;
@@ -217,6 +291,7 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
         }
         else if (flag == "--saturation") { if (!cur.nextDouble(flag, cfg.saturation)) break; }
         else if (flag == "--gamma")      { if (!cur.nextDouble(flag, cfg.gamma)) break; }
+        else if (flag == "--black-point"){ if (!cur.nextDouble(flag, cfg.black_point)) break; }
         else if (flag == "--shading")    { if (!cur.nextDouble(flag, cfg.shading)) break; }
         else if (flag == "--light-angle"){ if (!cur.nextDouble(flag, cfg.light_angle)) break; }
         else if (flag == "--light-height"){ if (!cur.nextDouble(flag, cfg.light_height)) break; }

@@ -9,6 +9,7 @@ uniform sampler2D uTex;     // high-res render
 uniform int   uSSAA;        // block size per axis
 uniform float uSaturation;  // 1 = unchanged
 uniform float uGamma;       // 1 = unchanged
+uniform float uBlackPoint;  // crush values below this to black (0 = off)
 
 vec3 toLinear(vec3 c) { return pow(c, vec3(2.2)); }
 vec3 toSRGB(vec3 c)   { return pow(c, vec3(1.0 / 2.2)); }
@@ -22,6 +23,11 @@ void main() {
     acc /= float(uSSAA * uSSAA);
 
     vec3 col = toSRGB(acc);
+
+    // Black point: lift the floor so the empty exterior reads as true black
+    // instead of dark-grey haze, while keeping bright detail intact.
+    if (uBlackPoint > 0.0)
+        col = clamp((col - uBlackPoint) / max(1.0 - uBlackPoint, 1e-3), 0.0, 1.0);
 
     // Saturation around luminance.
     float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));

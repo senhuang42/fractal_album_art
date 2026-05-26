@@ -11,8 +11,9 @@
 *.gif
 demo.*
 
-# ...but keep the README gallery
+# ...but keep the README gallery + video examples
 !assets/*.png
+!assets/*.mp4
 
 # macOS
 .DS_Store

@@ -83,9 +83,24 @@ make test                    # -> ./run_tests (GL-free unit tests)
   fine detail into rainbow noise. Built-ins are dark→bright ramps; `cyclic`
   defaults false (cycle-mode video forces it true). `magma`/`viridis` are the
   perceptually-uniform matplotlib maps.
-- **Off by default** (they fight the clean look): `--shading` (slope shading
-  adds "pointy" artifacts per the SAC article), `--angle-color`, `--trap-color`,
-  `--falloff` (the iteration layer now supplies negative space). All still there.
+- **Off by default** (they fight the clean look): `--shading`/`--specular`
+  (Blinn-Phong height-field lighting — proper but can darken), `--angle-color`,
+  `--trap-color`, `--falloff`. All still there.
+- **`--black-point`** (downsample, default 0.08) crushes near-blacks so the
+  empty exterior reads as true black instead of dark-grey haze. The other half
+  of that fix is the overlay gate `smoothstep(0.20, 0.62, iterS)`.
+- **Bloom** is the last render pass (`bloom.frag` H+V, `composite.frag`), on by
+  default. **Lighting** is in `fractal.frag` (height = displayed luminance via
+  `dFdx/dFdy`, resolution-normalized).
+- **Presets** (`applyPreset` in `cli.cpp`) are curated c+framing+palette combos
+  applied as a base in a pre-scan, so explicit flags override them. Add new ones
+  there AND in `presetNames()`. `assets/presets.png` is the contact sheet
+  (regenerate by rendering each preset + `montage`).
+- **Palettes** are dark→bright ramps in `palette.cpp`; restrained ones keep
+  detail coherent, wider-gamut ones (sunset/neon/synthwave/etc.) are vibrant.
+- **Zoom videos**: shader is 32-bit float -> pixelates past ~1e4×. Keep the
+  target on a detail-rich exterior point at ALL scales (probe with stills) or
+  the path crosses black set-interior bodies. -0.7453,0.1127 works to ~0.0013.
 - Video uses lower default SSAA (2) than stills (4) because it renders hundreds
   of frames. x264 + yuv420p needs even dimensions (handled in `runVideo`).
 
