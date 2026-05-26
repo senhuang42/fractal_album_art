@@ -93,10 +93,15 @@ COMMON OPTIONS
       --inside <hex>              Color of points in the set(default: #000000)
       --saturation <float>        Saturation grade          (default: 1.3)
       --gamma <float>             Gamma grade               (default: 1.05)
-      --shading <float>           Normal-map emboss (0=off) (default: 0)
-      --light-angle <float>       Light direction degrees   (default: 45)
-      --light-height <float>      Light elevation           (default: 1.2)
+      --shading <float>           Diffuse light strength    (default: 0)
+      --light-angle <float>       Light azimuth degrees     (default: 135)
+      --light-height <float>      Light elevation           (default: 1.0)
+      --specular <float>          Specular sheen strength   (default: 0)
+      --shininess <float>         Specular tightness        (default: 18)
+      --height-scale <float>      Relief depth for lighting (default: 1.5)
       --glow <float>              Distance-estimate glow     (default: 0)
+      --bloom <float>             Luminous bloom strength    (default: 0.3)
+      --bloom-threshold <float>   Brightness to bloom        (default: 0.5)
       --falloff <float>           Exterior fade-to-void      (default: 0)
   -o, --output <path>             Output file
 
@@ -215,7 +220,12 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
         else if (flag == "--shading")    { if (!cur.nextDouble(flag, cfg.shading)) break; }
         else if (flag == "--light-angle"){ if (!cur.nextDouble(flag, cfg.light_angle)) break; }
         else if (flag == "--light-height"){ if (!cur.nextDouble(flag, cfg.light_height)) break; }
+        else if (flag == "--specular")   { if (!cur.nextDouble(flag, cfg.specular)) break; }
+        else if (flag == "--shininess")  { if (!cur.nextDouble(flag, cfg.shininess)) break; }
+        else if (flag == "--height-scale"){ if (!cur.nextDouble(flag, cfg.height_scale)) break; }
         else if (flag == "--glow")       { if (!cur.nextDouble(flag, cfg.glow)) break; }
+        else if (flag == "--bloom")      { if (!cur.nextDouble(flag, cfg.bloom)) break; }
+        else if (flag == "--bloom-threshold") { if (!cur.nextDouble(flag, cfg.bloom_threshold)) break; }
         else if (flag == "--falloff")    { if (!cur.nextDouble(flag, cfg.falloff)) break; }
         else if (flag == "-o" || flag == "--output") {
             if (!cur.nextStr(flag, cfg.output)) break;

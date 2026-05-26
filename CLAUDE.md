@@ -30,9 +30,13 @@ make test                    # -> ./run_tests (GL-free unit tests)
 - `src/cli.{h,cpp}` — argv -> config. Pure and fully unit-tested. Add new flags
   here *and* in `helpText()` *and* cover them in `tests/test_cli.cpp`.
 - `src/palette.{h,cpp}` — hex/named palette parsing -> RGB gradient bytes.
-- `src/renderer.{h,cpp}` + `src/gl.h` — the ONLY OpenGL code. Two-pass: render
-  fractal into a supersampled FBO, then gamma-correct downsample into the output
-  FBO, then `glReadPixels`.
+- `src/renderer.{h,cpp}` + `src/gl.h` — the ONLY OpenGL code. Passes: render
+  fractal into a supersampled FBO -> gamma-correct downsample to output FBO ->
+  (optional) bloom: bright-pass + separable Gaussian blur (`bloom.frag`, run H
+  then V) screen-composited back (`composite.frag`) -> `glReadPixels` from
+  whichever FBO was last written (`read_fbo_`).
+- Shaders: `fractal.frag` (math/coloring/lighting), `downsample.frag` (resolve
+  + grade), `bloom.frag` (bright-pass + separable blur), `composite.frag`.
 - `shaders/fractal.frag` — the math + coloring + shading + traps.
 - `src/fractal_math.h` — CPU reference that MIRRORS `fractal.frag`. Kept in sync
   so the algorithm is unit-testable without a GL context. If you change the

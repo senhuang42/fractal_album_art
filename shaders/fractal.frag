@@ -35,9 +35,12 @@ uniform float uStripeFreq;    // stripe density s (integer 4/6/8 looks best)
 uniform float uStripeContrast;// stretch stripe value around mid (the -mod knob)
 uniform vec3  uInsideColor;  // color for points in the set
 
-uniform float uShading;      // 0 = flat, 1 = full normal-map emboss
-uniform float uLightAngle;   // light direction, degrees
-uniform float uLightHeight;  // light elevation
+uniform float uShading;      // diffuse light strength (0 = flat)
+uniform float uLightAngle;   // light azimuth, degrees
+uniform float uLightHeight;  // light elevation (z of the light vector)
+uniform float uSpecular;     // specular highlight strength (0 = none)
+uniform float uShininess;    // specular exponent (higher = tighter highlight)
+uniform float uHeightScale;  // how strongly the relief tilts the surface normal
 uniform float uGlow;         // distance-estimate filament glow strength
 uniform float uFalloff;      // exterior fade-to-void by distance (0 = off)
 
@@ -162,14 +165,24 @@ void main() {
         }
     }
 
-    // Normal-map "fake 3D" shading from the escape derivative.
-    if (uShading > 0.0) {
-        vec2  u    = normalize(cdiv(z, dz));
-        float ang  = radians(uLightAngle);
-        vec2  lite = vec2(cos(ang), sin(ang));
-        float h    = uLightHeight;
-        float lam  = clamp((dot(u, lite) + h) / (1.0 + h), 0.0, 1.0);
-        col = mix(col, col * lam, uShading);
+    // Blinn-Phong lighting of the relief as a height field. The stripe/iteration
+    // brightness IS a smooth height map, so its screen-space gradient gives a
+    // real surface normal: diffuse shading deepens the relief and a specular
+    // highlight adds a lit, polished sheen. (Derivatives are resolution-
+    // independent via *uResolution.y, and specular is scaled by luminance so it
+    // never sparkles in the black gaps.)
+    if (uShading > 0.0 || uSpecular > 0.0) {
+        float lum = dot(col, vec3(0.299, 0.587, 0.114));
+        float hx  = dFdx(lum) * uResolution.y;
+        float hy  = dFdy(lum) * uResolution.y;
+        vec3  N   = normalize(vec3(-hx * uHeightScale, -hy * uHeightScale, 1.0));
+        float az  = radians(uLightAngle);
+        vec3  L   = normalize(vec3(cos(az), sin(az), max(uLightHeight, 0.05)));
+        vec3  H   = normalize(L + vec3(0.0, 0.0, 1.0)); // view = +z
+        float diff = max(dot(N, L), 0.0);
+        float spec = pow(max(dot(N, H), 0.0), uShininess);
+        col *= (1.0 - uShading) + uShading * diff;        // diffuse emboss
+        col += uSpecular * spec * lum * vec3(1.0);        // specular sheen
     }
 
     // Distance estimate: plane-space distance to the set boundary, in pixels.

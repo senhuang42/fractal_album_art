@@ -42,13 +42,19 @@ public:
 private:
     int width_ = 0, height_ = 0, ssaa_ = 1;
 
-    unsigned int fractal_prog_   = 0;
+    unsigned int fractal_prog_    = 0;
     unsigned int downsample_prog_ = 0;
-    unsigned int vao_            = 0;
-    unsigned int palette_tex_    = 0;
+    unsigned int bloom_prog_      = 0;
+    unsigned int composite_prog_  = 0;
+    unsigned int vao_             = 0;
+    unsigned int palette_tex_     = 0;
 
     unsigned int fbo_hi_ = 0, tex_hi_ = 0; // supersampled render target
     unsigned int fbo_lo_ = 0, tex_lo_ = 0; // resolved output
+    unsigned int fbo_b0_ = 0, tex_b0_ = 0; // bloom ping
+    unsigned int fbo_b1_ = 0, tex_b1_ = 0; // bloom pong
+    unsigned int fbo_out_ = 0, tex_out_ = 0; // composited output
+    unsigned int read_fbo_ = 0;            // which FBO readPixels samples
 
     void* window_ = nullptr; // GLFWwindow*
 };

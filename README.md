@@ -76,6 +76,8 @@ The knobs worth knowing (`fractal help` has the rest):
 | `--stripe-freq`, `--stripe-contrast` | the relief texture |
 | `--color-density` | iteration-layer ramp; `0` = stripe layer only |
 | `--stripe-color` | stripe overlay weight; `0` = iteration layer only |
+| `--bloom` | luminous glow on bright areas (`0` = off) |
+| `--shading`, `--specular` | optional height-field lighting (off by default) |
 | `--ssaa` | supersampling per axis (1–8) |
 
 ## How it works
@@ -99,6 +101,11 @@ Set `--stripe-color 0` to see the iteration layer alone, or `--color-density 0`
 for the stripe layer alone.
 
 A couple of other things going on:
+- **bloom** — the bright filaments get blurred and screen-blended back in, so
+  they glow a little (on by default; `--bloom 0` turns it off)
+- optional **height-field lighting** — treats the relief as a height map and
+  lights it with diffuse + specular (Blinn-Phong) for a polished, lit look.
+  Off by default; `--shading 0.3 --specular 0.6` to try it
 - exterior fade and optional filament glow use Iñigo Quilez's
   [distance estimate](https://iquilezles.org/articles/distancefractals/)
 - supersampling is resolved in linear light so edges don't darken

@@ -88,12 +88,22 @@ struct RenderConfig {
     double saturation    = 1.3;        // final grade
     double gamma         = 1.05;       // final grade (1 = none)
 
-    // Derivative-based normal-map "fake 3D" shading. OFF by default: the SAC
-    // reference warns slope shading makes "abrupt pointy features in the smooth
-    // areas of the stripes," and SAC already looks 3D on its own. Optional.
-    double shading      = 0.0;   // 0 = flat smooth color, 1 = full emboss
-    double light_angle  = 45.0;  // light direction, degrees
-    double light_height = 1.2;   // light elevation (higher = flatter)
+    // Blinn-Phong lighting of the relief as a height field (diffuse + specular).
+    // Off by default (it can darken the bright relief), but it's a proper
+    // height-field light when you want a polished, lit sheen — try
+    // `--shading 0.3 --specular 0.6`.
+    double shading      = 0.0;   // diffuse strength (0 = flat)
+    double light_angle  = 135.0; // light azimuth, degrees
+    double light_height = 1.0;   // light elevation (z of light vector)
+    double specular     = 0.0;   // specular highlight strength (0 = none)
+    double shininess    = 18.0;  // specular exponent (higher = tighter)
+    double height_scale = 1.5;   // relief -> surface-normal tilt
+    // Bloom: blur the bright areas and screen-blend them back for a luminous
+    // glow. `bloom` is the strength (0 = off); `bloom_threshold` is how bright
+    // a pixel must be to bloom.
+    double bloom           = 0.3;
+    double bloom_threshold = 0.5;
+
     // `glow` lights the thin filaments using a distance estimate.
     double glow         = 0.0;   // 0 = off
     // `falloff` fades the exterior toward inside_color by distance to the set.

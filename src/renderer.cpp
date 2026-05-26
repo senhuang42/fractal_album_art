@@ -132,13 +132,15 @@ void setUniform3f(unsigned int p, const char* n, float a, float b, float c) { gl
 Renderer::~Renderer() {
     if (window_) {
         if (palette_tex_)     glDeleteTextures(1, &palette_tex_);
-        if (tex_hi_)          glDeleteTextures(1, &tex_hi_);
-        if (tex_lo_)          glDeleteTextures(1, &tex_lo_);
-        if (fbo_hi_)          glDeleteFramebuffers(1, &fbo_hi_);
-        if (fbo_lo_)          glDeleteFramebuffers(1, &fbo_lo_);
+        for (unsigned int t : {tex_hi_, tex_lo_, tex_b0_, tex_b1_, tex_out_})
+            if (t) glDeleteTextures(1, &t);
+        for (unsigned int f : {fbo_hi_, fbo_lo_, fbo_b0_, fbo_b1_, fbo_out_})
+            if (f) glDeleteFramebuffers(1, &f);
         if (vao_)             glDeleteVertexArrays(1, &vao_);
         if (fractal_prog_)    glDeleteProgram(fractal_prog_);
         if (downsample_prog_) glDeleteProgram(downsample_prog_);
+        if (bloom_prog_)      glDeleteProgram(bloom_prog_);
+        if (composite_prog_)  glDeleteProgram(composite_prog_);
         glfwDestroyWindow(static_cast<GLFWwindow*>(window_));
         glfwTerminate();
     }
@@ -171,27 +173,38 @@ bool Renderer::init(int width, int height, int ssaa,
               "pass --shader-dir";
         return false;
     }
-    bool ok1 = false, ok2 = false, ok3 = false;
+    bool ok1 = false, ok2 = false, ok3 = false, ok4 = false, ok5 = false;
     std::string vsrc  = readFile(dir + "/fullscreen.vert", ok1);
     std::string fsrc  = readFile(dir + "/fractal.frag", ok2);
     std::string dssrc = readFile(dir + "/downsample.frag", ok3);
-    if (!ok1 || !ok2 || !ok3) { err = "failed to read shader files from " + dir; return false; }
+    std::string blsrc = readFile(dir + "/bloom.frag", ok4);
+    std::string cmsrc = readFile(dir + "/composite.frag", ok5);
+    if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5) { err = "failed to read shader files from " + dir; return false; }
 
     fractal_prog_ = linkProgram(vsrc, fsrc, err);
     if (!fractal_prog_) return false;
     downsample_prog_ = linkProgram(vsrc, dssrc, err);
     if (!downsample_prog_) return false;
+    bloom_prog_ = linkProgram(vsrc, blsrc, err);
+    if (!bloom_prog_) return false;
+    composite_prog_ = linkProgram(vsrc, cmsrc, err);
+    if (!composite_prog_) return false;
 
     glGenVertexArrays(1, &vao_); // empty VAO required by core profile
 
     const int hw = width_ * ssaa_, hh = height_ * ssaa_;
     if (!makeTarget(hw, hh, fbo_hi_, tex_hi_, err)) return false;
     if (!makeTarget(width_, height_, fbo_lo_, tex_lo_, err)) return false;
+    if (!makeTarget(width_, height_, fbo_b0_, tex_b0_, err)) return false;
+    if (!makeTarget(width_, height_, fbo_b1_, tex_b1_, err)) return false;
+    if (!makeTarget(width_, height_, fbo_out_, tex_out_, err)) return false;
 
-    // Filter the hi-res texture linearly for the resolve sampling fallback.
-    glBindTexture(GL_TEXTURE_2D, tex_hi_);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // Linear filtering for textures sampled with texture() (resolve + bloom).
+    for (unsigned int t : {tex_hi_, tex_lo_, tex_b0_, tex_b1_}) {
+        glBindTexture(GL_TEXTURE_2D, t);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
 
     glGenTextures(1, &palette_tex_);
     return true;
@@ -240,6 +253,9 @@ void Renderer::render(const RenderConfig& cfg) {
     setUniform1f(fractal_prog_, "uShading", (float)cfg.shading);
     setUniform1f(fractal_prog_, "uLightAngle", (float)cfg.light_angle);
     setUniform1f(fractal_prog_, "uLightHeight", (float)cfg.light_height);
+    setUniform1f(fractal_prog_, "uSpecular", (float)cfg.specular);
+    setUniform1f(fractal_prog_, "uShininess", (float)cfg.shininess);
+    setUniform1f(fractal_prog_, "uHeightScale", (float)cfg.height_scale);
     setUniform1f(fractal_prog_, "uGlow", (float)cfg.glow);
     setUniform1f(fractal_prog_, "uFalloff", (float)cfg.falloff);
 
@@ -259,12 +275,58 @@ void Renderer::render(const RenderConfig& cfg) {
     setUniform1f(downsample_prog_, "uGamma", (float)cfg.gamma);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    read_fbo_ = fbo_lo_;
+
+    // --- Bloom: bright-pass + separable blur, screen-composited back ---
+    if (cfg.bloom > 0.0) {
+        const float fw = (float)width_, fh = (float)height_;
+        const float spread = std::max(1.0f, fh / 400.0f); // tap spacing in px
+        glViewport(0, 0, width_, height_);
+        glBindVertexArray(vao_);
+
+        // Pass A: extract bright + horizontal blur (fbo_lo -> b0)
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo_b0_);
+        glUseProgram(bloom_prog_);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex_lo_);
+        setUniform1i(bloom_prog_, "uTex", 0);
+        setUniform2f(bloom_prog_, "uTexSize", fw, fh);
+        setUniform2f(bloom_prog_, "uDir", spread, 0.0f);
+        setUniform1i(bloom_prog_, "uExtract", 1);
+        setUniform1f(bloom_prog_, "uThreshold", (float)cfg.bloom_threshold);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Pass B: vertical blur (b0 -> b1)
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo_b1_);
+        glBindTexture(GL_TEXTURE_2D, tex_b0_);
+        setUniform2f(bloom_prog_, "uDir", 0.0f, spread);
+        setUniform1i(bloom_prog_, "uExtract", 0);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Composite: fbo_lo + bloom(b1) -> fbo_out
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo_out_);
+        glUseProgram(composite_prog_);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex_lo_);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, tex_b1_);
+        setUniform1i(composite_prog_, "uBase", 0);
+        setUniform1i(composite_prog_, "uBloom", 1);
+        setUniform2f(composite_prog_, "uTexSize", fw, fh);
+        setUniform1f(composite_prog_, "uStrength", (float)cfg.bloom);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glActiveTexture(GL_TEXTURE0);
+
+        read_fbo_ = fbo_out_;
+    }
+
     glFinish();
 }
 
 std::vector<uint8_t> Renderer::readPixels() {
     std::vector<uint8_t> buf(static_cast<size_t>(width_) * height_ * 3);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_lo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, read_fbo_ ? read_fbo_ : fbo_lo_);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width_, height_, GL_RGB, GL_UNSIGNED_BYTE, buf.data());
 
