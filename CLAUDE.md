@@ -56,24 +56,32 @@ make test                    # -> ./run_tests (GL-free unit tests)
   between `main.o` and the others and the program crashes (SIGABRT) with
   garbage config. If you ever see weird crashes after editing a header,
   `make clean && make`.
-- **Coloring is the whole game, and SAC is the answer.** Stripe Average
-  Coloring (`fractal.frag`, faithfully following the philthompson article) is
-  the default and primary look: average `½+½·sin(freq·arg z)` over the orbit,
-  then interpolate incl/excl the last point by `frac(mu)`. That de-banding
-  interpolation is non-negotiable — without it you get level-set seams; with it
-  the smooth field reads as 3D relief. Needs a LARGE bailout (default 10000).
+- **Coloring is two layers, gated (the philthompson overlay idea).** See the
+  color block in `fractal.frag`:
+  1. *Iteration layer*: `iterS = 1 - exp(-mu * color_density)`. Fast-escape
+     exterior → ~0 (dark), slow-escape filaments → ~1 (bright). This draws the
+     structure, the dendrite tendrils, and the dark negative space.
+  2. *Stripe layer (SAC)*: average `½+½·sin(freq·arg z)` over the orbit,
+     interpolate incl/excl the last point by `frac(mu)`. The de-banding
+     interpolation is non-negotiable (no it → level-set seams; with it → smooth
+     3D relief). Needs a LARGE bailout (default 10000).
+  - Combine: `mix(iterCol, stripeCol * smoothstep(0.12,0.55,iterS), stripe_color)`.
+    The smoothstep gate keeps gaps black while the structure shows FULL stripe
+    relief (a plain multiply dims the structure; a plain hard-light leaks bright
+    fur into the gaps — both were tried and rejected).
+  - Layer selection: `color_density==0` → stripe only (image #10);
+    `stripe_color==0` → iteration only (image #9); both > 0 → overlay (#8).
+- **Tendril reach is a property of the fractal, not a setting.** Whole-set
+  Julia views have smooth far-field exteriors (no tendrils → SAC makes smooth
+  "fur" there). Real dendrite tendrils live near the boundary — more dendritic
+  `c` (e.g. -0.7269+0.1889i) or Mandelbrot regions, plus high iterations.
 - **Restrained ramp palettes are essential.** A full-spectrum hue wheel turns
-  SAC's fine detail into rainbow noise ("smushed grey"). Built-ins are
-  dark→bright ramps; default gradient is NOT looped (`cyclic=false`) so low
-  stripe → dark/void, high → bright. Perceptually-uniform `magma`/`viridis`
-  are reliable. Cycle-mode video forces `cyclic=true`.
-- **`--falloff`** (distance estimate) carves the black negative space that
-  makes the relief pop. It's back ON by default (0.014) precisely for that.
-- **These are OFF by default because they fight the clean SAC look:**
-  `--shading` (the SAC article warns slope shading adds "pointy" artifacts to
-  smooth stripe areas), `--color-density` (iteration hue → rainbow),
-  `--angle-color` (chaotic speckle deep in the body), `--trap-color` (its raw
-  min can seam). They remain available for vibrant/experimental looks.
+  fine detail into rainbow noise. Built-ins are dark→bright ramps; `cyclic`
+  defaults false (cycle-mode video forces it true). `magma`/`viridis` are the
+  perceptually-uniform matplotlib maps.
+- **Off by default** (they fight the clean look): `--shading` (slope shading
+  adds "pointy" artifacts per the SAC article), `--angle-color`, `--trap-color`,
+  `--falloff` (the iteration layer now supplies negative space). All still there.
 - Video uses lower default SSAA (2) than stills (4) because it renders hundreds
   of frames. x264 + yuv420p needs even dimensions (handled in `runVideo`).
 

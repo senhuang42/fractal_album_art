@@ -123,14 +123,44 @@ void main() {
         sac = (sac - 0.5) * uStripeContrast + 0.5;
     }
 
-    // Palette coordinate combines cues so color is rich and smooth everywhere.
-    float angle = atan(z.y, z.x) / (2.0 * PI) + 0.5; // [0,1)
-    float t = fract(mu * uColorDensity
-                  + uStripeColor * sac
-                  + uAngleColor  * angle
-                  + uTrapColor   * trap
-                  + uColorOffset);
-    vec3  col = texture(uPalette, vec2(t, 0.5)).rgb;
+    // Two layers (the SAC reference's two renders), combined here:
+    //
+    //   * Iteration layer -> structure, dendrite tendrils, dark gaps. Fast-
+    //     escape exterior -> ~black; slow-escape filaments thread out as bright
+    //     tendrils. This is the layer that populates the "black" with real
+    //     detail from the equation.
+    //   * Stripe layer (SAC) -> the smooth 3D relief texture/hue.
+    //
+    // The iteration layer GATES the stripe layer (multiply): gaps go black,
+    // structure shows full stripe relief, and the bright tendrils carry the
+    // relief out into the void. (A plain hard-light lets the bright fur leak
+    // into the gaps; gating keeps them clean.)
+    //
+    // Layer selection (CLI): color_density==0 -> stripe only;
+    // stripe_color==0 -> iteration only; both > 0 -> gated overlay.
+    float stripeS = clamp(sac, 0.0, 1.0);
+    float angle   = atan(z.y, z.x) / (2.0 * PI) + 0.5; // [0,1)
+    stripeS = fract(stripeS + uAngleColor * angle + uTrapColor * trap + uColorOffset);
+
+    vec3 col;
+    if (uColorDensity <= 0.0) {
+        col = texture(uPalette, vec2(stripeS, 0.5)).rgb;           // stripe alone
+    } else {
+        // Iteration ramp: fast-escape gaps -> ~0, slow-escape structure -> ~1.
+        float iterS = 1.0 - exp(-mu * uColorDensity);
+        if (uStripeColor <= 0.0) {
+            col = texture(uPalette, vec2(iterS, 0.5)).rgb;         // iteration alone
+        } else {
+            // Gate the stripe relief by the iteration layer: a smoothstep mask
+            // that is ~0 only in the true empty gaps and ~1 across structure
+            // AND the faint tendrils, so the relief shows at full brightness on
+            // the structure while the void stays black.
+            vec3  stripeCol = texture(uPalette, vec2(stripeS, 0.5)).rgb;
+            vec3  iterCol   = texture(uPalette, vec2(iterS,   0.5)).rgb;
+            float gate = smoothstep(0.12, 0.55, iterS);
+            col = mix(iterCol, stripeCol * gate, uStripeColor);
+        }
+    }
 
     // Normal-map "fake 3D" shading from the escape derivative.
     if (uShading > 0.0) {

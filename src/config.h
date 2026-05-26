@@ -64,15 +64,16 @@ struct RenderConfig {
     // NOT looped: low stripe values map to the dark end (negative space) and
     // high values to the bright end. (cycle-mode video re-enables looping.)
     bool   cyclic        = false;      // close the gradient loop?
-    // Iteration-count hue. Per the SAC reference this has "no effect" on the
-    // stripe look and just adds rainbow, so it's off by default; raise it only
-    // for traditional iteration-band coloring.
-    double color_density = 0.0;        // palette cycles per iteration unit
+    // Iteration layer ramp: fast-escape exterior -> dark, slow-escape
+    // filaments -> bright (coord = 1 - exp(-mu * color_density)). This is the
+    // layer that draws the dendrite tendrils and the dark negative space.
+    // 0 disables it -> stripe layer renders alone.
+    double color_density = 0.035;      // iteration ramp steepness
     double color_offset  = 0.0;        // palette phase shift [0,1)
-    // Stripe Average Coloring (Haerkoenen 2007) — THE primary look. Averages
-    // sin(stripe_freq * arg z) along the orbit, de-banded by the fractional
-    // escape time. The smooth stripe field reads as 3D relief on its own.
-    double stripe_color    = 1.0;      // gradient cycles the stripe value spans
+    // Stripe Average Coloring (Haerkoenen 2007) — the relief texture, laid over
+    // the iteration layer with a hard-light overlay. 0 disables it -> iteration
+    // layer renders alone; 1 = full overlay.
+    double stripe_color    = 1.0;      // hard-light overlay weight
     double stripe_freq     = 6.0;      // stripe density (integer 4/6/8 best)
     double stripe_contrast = 2.2;      // stretch around mid to use full gradient
     // Escape-angle blend. Adds hue grain near the boundary but turns into
@@ -96,9 +97,9 @@ struct RenderConfig {
     // `glow` lights the thin filaments using a distance estimate.
     double glow         = 0.0;   // 0 = off
     // `falloff` fades the exterior toward inside_color by distance to the set.
-    // This is what carves the black negative space around the structure that
-    // makes SAC relief read as 3D; larger = tighter to the set.
-    double falloff      = 0.014;
+    // Off by default now: the iteration layer already supplies the black
+    // negative space (and does it with real tendrils, not a smooth fade).
+    double falloff      = 0.0;
 
     std::string output = "fractal.png";
 };
