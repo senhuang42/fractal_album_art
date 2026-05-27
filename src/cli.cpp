@@ -194,7 +194,8 @@ COMMON OPTIONS
   -o, --output <path>             Output file
 
 VIDEO OPTIONS
-      --mode <rotate|zoom|cycle>  Animation type            (default: rotate)
+      --mode <rotate|zoom|cycle|spin> Animation type        (default: rotate)
+                                  (spin = rotate a --kaleido mandala, seamless)
   -d, --duration <float>          Seconds                   (default: 20)
       --fps <int>                 Frames per second         (default: 30)
       --crf <int>                 x264 quality, lower=better(default: 18)
@@ -357,7 +358,8 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
             if (v == "rotate") cfg.mode = AnimMode::Rotate;
             else if (v == "zoom") cfg.mode = AnimMode::Zoom;
             else if (v == "cycle") cfg.mode = AnimMode::Cycle;
-            else { fail("--mode must be rotate, zoom, or cycle; got '" + v + "'"); break; }
+            else if (v == "spin") cfg.mode = AnimMode::Spin;
+            else { fail("--mode must be rotate, zoom, cycle, or spin; got '" + v + "'"); break; }
         }
         else if (flag == "-d" || flag == "--duration") {
             if (!cur.nextDouble(flag, cfg.duration)) break;

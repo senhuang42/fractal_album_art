@@ -70,6 +70,13 @@ void test_cli() {
         CHECK(p.video.total_frames() == 240);
         CHECK_NEAR(p.video.zoom_end, 0.001, 1e-12);
     }
+    {
+        // spin mode (kaleidoscope rotation loop)
+        auto p = parse({"video", "--mode", "spin"});
+        CHECK(p.error.empty());
+        CHECK(p.video.mode == AnimMode::Spin);
+    }
+    CHECK(!parse({"video", "--mode", "bogus"}).error.empty());
 
     // ---- presets ----
     {

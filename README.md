@@ -21,17 +21,36 @@ different region of a Julia or Mandelbrot set:
 
 ![preset gallery](assets/presets.png)
 
-Video examples: a seamless [rotating loop](assets/loop_magma.mp4) and a
-[rapid zoom](assets/zoom_seahorse.mp4) into the seahorse valley.
+## Animation
 
-## Album art
+`fractal video` renders MP4s. Four modes, three of them seamless loops (great
+for wallpapers, visualizers, or Spotify Canvas):
 
-There's a design layer on top of the fractal for making covers — four
-composable, toggleable modes, each with a ready-made `cover-*` preset on a
-fuchsia-forward neon palette (`vice`). All are square; render at `--size
-3000x3000` for streaming/print.
+| mode | what moves | example |
+|---|---|---|
+| `rotate` | the Julia constant orbits → the shape morphs | [loop_rotate.mp4](assets/loop_rotate.mp4) |
+| `cycle` | the palette sweeps one full cycle | [loop_cycle.mp4](assets/loop_cycle.mp4) |
+| `spin` | a kaleidoscope axis turns a full revolution | [loop_spin.mp4](assets/loop_spin.mp4) |
+| `zoom` | a continuous dive toward a target (one-shot, not a loop) | [zoom_seahorse.mp4](assets/zoom_seahorse.mp4) |
 
-![album-art modes](assets/covers.png)
+```sh
+fractal video --mode rotate -p vice --cyclic -d 8 -o loop.mp4
+fractal video -P cover-mandala --mode spin -d 8 -o spin.mp4   # spinning mandala
+```
+
+## Covers & the design layer
+
+A few post/coordinate effects make the renders read as designed pieces (e.g.
+album covers) rather than raw plots. They're plain toggles — off by default —
+with four ready-made `cover-*` presets on a fuchsia-forward neon palette
+(`vice`). All are square; render at `--size 3000x3000` for streaming/print.
+
+![cover modes](assets/covers.png)
+
+A test cover — the `cover-hero` location (a Mandelbrot seahorse) with the
+`cover-glitch` treatment ([assets/test_cover.png](assets/test_cover.png)):
+
+![test cover](assets/test_cover.png)
 
 ```sh
 fractal render -P cover-mandala --size 3000x3000 -o cover.png  # radial symmetry

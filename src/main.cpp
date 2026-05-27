@@ -81,6 +81,15 @@ fractal::RenderConfig frameConfig(const fractal::VideoConfig& v, int frame) {
             c.color_offset = v.color_offset + u;
             break;
         }
+        case fractal::AnimMode::Spin: {
+            // Rotate the kaleidoscope axis a full turn. A full 360 wraps atan()
+            // and every sample returns to its start, so the loop is seamless.
+            // (One *segment* is NOT enough: the fractal has no rotational
+            // symmetry, so each wedge samples a different slice as the axis
+            // turns -- the mandala spins AND morphs, returning only after 360.)
+            c.kaleido_angle = v.kaleido_angle + u * 360.0;
+            break;
+        }
     }
     return c;
 }

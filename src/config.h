@@ -22,6 +22,7 @@ enum class AnimMode {
     Rotate, // Julia constant orbits the origin: c = r * e^(i*theta), theta 0..2pi
     Zoom,   // smooth zoom from start scale to end scale toward a target point
     Cycle,  // static fractal, palette phase sweeps a full cycle
+    Spin,   // kaleidoscope rotates by one symmetry segment (seamless mandala loop)
 };
 
 // An RGB color in linear-ish [0,1] sRGB space.
