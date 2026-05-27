@@ -124,7 +124,12 @@ make test                    # -> ./run_tests (GL-free unit tests)
   *desaturated near-white* top stop makes slow-escape cores read as a grey blob
   (ember's old `#fff1c1` → grey seahorse eye; fixed to warm gold `#ffdc8f`).
   Rule of thumb: ramp near-black → saturated mids → warm/colored (not white)
-  highlight, and leave `saturation` at the default 1.3.
+  highlight, and leave `saturation` at the default 1.3. The per-preset lever for
+  internal relief contrast is `stripe_contrast` (default 2.2): bumping it to
+  ~3.4 stretches the SAC values toward the palette's dark and bright ends, which
+  un-washes flat interiors (applied to candy-swirl/synthwave/dracula/rosegold
+  alongside more contrasty palettes). The faithful muted themes (`nord`,
+  `cividis`) are intentionally low-contrast and left alone.
 - **Palettes** are dark→bright ramps in `palette.cpp`; restrained ones keep
   detail coherent, wider-gamut ones (sunset/neon/prism/etc.) are vibrant.
 - **Zoom videos**: the default path is 32-bit float -> pixelates past ~1e4×.

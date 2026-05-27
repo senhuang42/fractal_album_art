@@ -61,7 +61,10 @@ const std::map<std::string, std::vector<std::string>>& namedPalettes() {
         // a violet bridge, one cyan pop at the top -- no green/yellow. Built for
         // album art; pairs with the cover-* presets.
         {"vice",        {"#070010", "#5e0048", "#b80077", "#ff1a8d", "#ff66c4", "#c44bff", "#36e6ff"}},
-        {"candy",       {"#190a2e", "#ff5fa2", "#ff9ec7", "#ffd6e8", "#a0e7ff", "#7afcff"}},
+        // Pink + cyan, saturated rather than pastel: the old version was three
+        // light tints in a row, which washed out. Near-black anchor + one light
+        // stop keeps the contrast.
+        {"candy",       {"#0c0420", "#a3005f", "#ff2e88", "#ff77b0", "#00b4e6", "#7af0ff"}},
         {"gold",        {"#0a0600", "#3d2600", "#8a5a00", "#d49a1a", "#ffd86b", "#fff4cf"}},
         {"emerald",     {"#001a10", "#00402a", "#0a7a50", "#3fd089", "#b8f0c8", "#ffffff"}},
         {"vapor",       {"#1a0b2e", "#7b2ff7", "#f72585", "#4cc9f0", "#80ffea", "#ffffff"}},
@@ -73,14 +76,20 @@ const std::map<std::string, std::vector<std::string>>& namedPalettes() {
         // contrast; this version just dials the peak brightness down a touch.)
         {"prism",       {"#05021a", "#06525a", "#0eb8aa", "#4a9ae6", "#8a50e0", "#e62aa3", "#ecb0db"}},
         // Popular design color schemes, arranged as dark->bright ramps.
-        {"synthwave",   {"#100024", "#3b0f6f", "#b5179e", "#ff2a6d", "#ff9e64", "#fff3b0"}},
+        // Ends on a saturated gold, not near-white cream (which washed the
+        // highlights), with a darker anchor.
+        {"synthwave",   {"#0c0020", "#2a0a52", "#b5179e", "#ff2a6d", "#ff6b3d", "#ffc24a"}},
         {"nord",        {"#11131a", "#2e3440", "#434c5e", "#5e81ac", "#88c0d0", "#eceff4"}},
-        {"dracula",     {"#15161e", "#282a36", "#6272a4", "#bd93f9", "#ff79c6", "#f1fa8c"}},
+        // Near-black anchor and a saturated purple mid instead of the muted
+        // slate-grey, so it stops reading as flat lavender.
+        {"dracula",     {"#0b0b12", "#3a2d5c", "#bd93f9", "#ff79c6", "#8be9fd", "#f1fa8c"}},
         // Anchored at near-black (not gruvbox's grey #1d2021) so the exterior
         // and deep relief stay dark -> full contrast instead of a washed haze.
         {"gruvbox",     {"#0d0b08", "#3c1a0a", "#cc241d", "#d65d0e", "#d79921", "#fbf1c7"}},
         {"autumn",      {"#1a0e08", "#4a1c10", "#8a3324", "#c1440e", "#e08e0b", "#f7d08a"}},
-        {"rosegold",    {"#1a0d12", "#4a1f2e", "#8a3a52", "#c76b7e", "#e8a9a0", "#f7e6dd"}},
+        // Deeper anchor and more saturated rose mids than the old dusty version,
+        // which read as low-contrast.
+        {"rosegold",    {"#150509", "#4a142a", "#962f56", "#d4486f", "#ef8e8a", "#fbd9c4"}},
         {"galaxy",      {"#05010f", "#1a1248", "#4b2a9e", "#8e44ad", "#c06ff2", "#ffe6ff"}},
         {"mint",        {"#04140f", "#0a3d2e", "#138a5e", "#3fd089", "#9af0c8", "#eafff5"}},
         // Saturated rainbow on near-black — the deliberately vibrant option.

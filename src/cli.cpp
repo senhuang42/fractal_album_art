@@ -62,16 +62,16 @@ bool applyPreset(const std::string& name, VideoConfig& c, std::string& palette_s
     else if (name == "dusk")           julia(-0.512511, 0.521295, 1.30, 1800, "sunset");
     else if (name == "neon-dust")      julia( 0.285,    0.01,     1.60, 1500, "neon");
     else if (name == "viridian")       julia(-0.70176, -0.3842,   1.20, 3000, "viridis");
-    else if (name == "candy-swirl")    julia(-0.7269,   0.1889,   1.10, 3000, "candy");
+    else if (name == "candy-swirl")  { julia(-0.7269,   0.1889,   1.10, 3000, "candy");     c.stripe_contrast = 3.4; }
     else if (name == "ember-seahorse") mandel(-0.74364388703, 0.13182590421, 1.35 / 350.0, 2000, "ember");
     else if (name == "inferno-valley") mandel(-0.748, 0.1, 1.35 / 11.0, 2500, "inferno");
     // Presets built on popular color themes.
-    else if (name == "synthwave")      julia(-0.512511, 0.521295, 1.30, 2000, "synthwave");
+    else if (name == "synthwave")    { julia(-0.512511, 0.521295, 1.30, 2000, "synthwave"); c.stripe_contrast = 3.4; }
     else if (name == "nord")           julia(-0.74543,  0.11301,  1.25, 3000, "nord");
-    else if (name == "dracula")        julia(-0.7269,   0.1889,   1.10, 3000, "dracula");
+    else if (name == "dracula")      { julia(-0.7269,   0.1889,   1.10, 3000, "dracula");   c.stripe_contrast = 3.4; }
     else if (name == "gruvbox")        mandel(-0.74364388703, 0.13182590421, 1.35 / 350.0, 2000, "gruvbox");
     else if (name == "autumn")         julia(-0.8,      0.156,    1.30, 2500, "autumn");
-    else if (name == "rosegold")       julia(-0.512511, 0.521295, 1.30, 2000, "rosegold");
+    else if (name == "rosegold")     { julia(-0.512511, 0.521295, 1.30, 2000, "rosegold");  c.stripe_contrast = 3.4; }
     else if (name == "galaxy")         julia(-0.123,    0.745,    1.40, 2000, "galaxy");
     else if (name == "mint")           julia(-0.70176, -0.3842,   1.20, 3000, "mint");
     // Trippy fuchsia/teal on the full default Julia spiral. The CYCLIC prism
