@@ -45,11 +45,38 @@ uniform float uGlow;         // distance-estimate filament glow strength
 uniform float uFalloff;      // exterior fade-to-void by distance (0 = off)
 uniform float uKaleido;      // N mirrored wedges (< 2 = off)
 uniform float uKaleidoAngle; // rotate the symmetry, radians
+uniform int   uFormula;      // 0 quad, 1 burning ship, 2 tricorn, 3 phoenix, 4 newton
+uniform vec2  uPhoenixP;     // Phoenix z_prev coefficient
 
 const float PI = 3.14159265358979;
 
 vec2 cmul(vec2 a, vec2 b) { return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
 vec2 cdiv(vec2 a, vec2 b) { float d = dot(b, b); return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y) / d; }
+
+// Newton's method on z^3 - 1 = 0, colored by which of the three cube roots of
+// unity the orbit converges to (the basin) and how fast it got there. A
+// separate path from escape-time: there is no bailout, we test for convergence.
+vec3 newtonColor(vec2 z) {
+    const vec2 r0 = vec2( 1.0,  0.0);
+    const vec2 r1 = vec2(-0.5,  0.8660254);
+    const vec2 r2 = vec2(-0.5, -0.8660254);
+    int i; int root = -1;
+    for (i = 0; i < uMaxIter; i++) {
+        vec2 z2 = cmul(z, z);
+        vec2 z3 = cmul(z2, z);
+        z -= cdiv(z3 - vec2(1.0, 0.0), 3.0 * z2);   // z - f/f'
+        if (distance(z, r0) < 1e-4) { root = 0; break; }
+        if (distance(z, r1) < 1e-4) { root = 1; break; }
+        if (distance(z, r2) < 1e-4) { root = 2; break; }
+    }
+    // Shade by how fast it converged: fast (few iters) bright, boundary dark.
+    float bright = clamp(1.0 - float(i) / float(uMaxIter), 0.0, 1.0);
+    bright = pow(bright, 0.6);
+    if (root < 0) return uInsideColor;                 // never converged
+    float palCoord = fract((float(root) + 0.5) / 3.0 + uColorOffset);
+    vec3 hue = texture(uPalette, vec2(palCoord, 0.5)).rgb;
+    return hue * (0.12 + 0.88 * bright);
+}
 
 // Complex power via polar form (used only when exponent != 2).
 vec2 cpow(vec2 z, float p) {
@@ -78,6 +105,10 @@ void main() {
 
     vec2 p  = uCenter + uv * (2.0 * uScale);
 
+    // Newton fractals are convergence-based, not escape-time: own coloring path.
+    // (Runs after the kaleidoscope fold, so --kaleido works on it too.)
+    if (uFormula == 4) { FragColor = vec4(newtonColor(p), 1.0); return; }
+
     bool mandel = (uType == 0);
     vec2 z, c, dz;
     if (mandel) { c = p;       z = vec2(0.0); dz = vec2(0.0);      } // dz/dc
@@ -102,14 +133,24 @@ void main() {
     float stripeSum = 0.0;   // running sum of sin-stripe terms
     float lastTerm  = 0.0;   // most recent stripe term (for de-banding)
     int   stripeN   = 0;     // number of stripe terms summed
+    vec2  zprev     = vec2(0.0); // previous z, for Phoenix
     for (i = 0; i < uMaxIter; i++) {
+        // Formula transform applied to z before squaring: Burning Ship folds
+        // both components positive; Tricorn conjugates. Quadratic/Phoenix leave
+        // z as-is. (See Formula in config.h.)
+        vec2 zt = z;
+        if      (uFormula == 1) zt = vec2(abs(z.x), abs(z.y)); // Burning Ship
+        else if (uFormula == 2) zt = vec2(z.x, -z.y);          // Tricorn
         // Update derivative using the current z, then advance z.
         if (quad) {
-            if (useDE) dz = 2.0 * cmul(z, dz) + one;
-            z  = cmul(z, z) + c;
+            if (useDE) dz = 2.0 * cmul(zt, dz) + one;
+            vec2 znew = cmul(zt, zt) + c;
+            if (uFormula == 3) znew += cmul(uPhoenixP, zprev); // Phoenix z_prev term
+            zprev = z;
+            z = znew;
         } else {
-            if (useDE) dz = uExponent * cmul(cpow(z, uExponent - 1.0), dz) + one;
-            z  = cpow(z, uExponent) + c;
+            if (useDE) dz = uExponent * cmul(cpow(zt, uExponent - 1.0), dz) + one;
+            z  = cpow(zt, uExponent) + c;
         }
         if (useTrap) trap = min(trap, distance(z, uTrapPoint));
         if (useStripe && i >= kStripeSkip) {

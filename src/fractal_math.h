@@ -9,6 +9,8 @@
 #include <cmath>
 #include <complex>
 
+#include "config.h" // Formula
+
 namespace fractal {
 
 struct EscapeResult {
@@ -27,17 +29,23 @@ inline EscapeResult escapeTime(std::complex<double> z,
                                std::complex<double> c,
                                int    max_iter,
                                double bailout,
-                               double exponent = 2.0) {
+                               double exponent = 2.0,
+                               Formula formula = Formula::Quadratic) {
     const double bail2 = bailout * bailout;
     int i = 0;
     double mag2 = std::norm(z); // |z|^2
     for (; i < max_iter; ++i) {
+        // Formula transform before squaring (mirrors the shader). Phoenix and
+        // Newton are GPU-only and not modelled here.
+        std::complex<double> zt = z;
+        if      (formula == Formula::BurningShip) zt = {std::abs(z.real()), std::abs(z.imag())};
+        else if (formula == Formula::Tricorn)     zt = std::conj(z);
         if (exponent == 2.0) {
             // Fast path matching the shader's z*z.
-            const double zr = z.real(), zi = z.imag();
+            const double zr = zt.real(), zi = zt.imag();
             z = std::complex<double>(zr * zr - zi * zi, 2.0 * zr * zi) + c;
         } else {
-            z = std::pow(z, exponent) + c;
+            z = std::pow(zt, exponent) + c;
         }
         mag2 = std::norm(z);
         if (mag2 > bail2) {

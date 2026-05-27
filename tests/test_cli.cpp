@@ -128,6 +128,21 @@ void test_cli() {
         CHECK(p.render.vignette > 0.0);
         CHECK(p.render.palette.size() >= 2); // vice resolved
     }
+    {
+        // --formula axis + family presets
+        auto p = parse({"render", "--formula", "burningship"});
+        CHECK(p.error.empty());
+        CHECK(p.render.formula == Formula::BurningShip);
+        CHECK(parse({"render", "--formula", "newton"}).render.formula == Formula::Newton);
+        CHECK(parse({"render", "--formula", "tricorn"}).render.formula == Formula::Tricorn);
+        auto ph = parse({"render", "--formula", "phoenix", "--phoenix-p", "-0.4"});
+        CHECK(ph.render.formula == Formula::Phoenix);
+        CHECK_NEAR(ph.render.phoenix_pre, -0.4, 1e-9);
+        CHECK(!parse({"render", "--formula", "bogus"}).error.empty());
+        CHECK(parse({"render", "-P", "burning-ship"}).render.formula == Formula::BurningShip);
+        CHECK(parse({"render", "-P", "newton"}).render.formula == Formula::Newton);
+        CHECK(parse({"render", "-P", "phoenix"}).render.formula == Formula::Phoenix);
+    }
     CHECK(!parse({"render", "-P", "bogus"}).error.empty());
 
     // ---- error handling ----

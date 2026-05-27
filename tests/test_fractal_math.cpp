@@ -40,6 +40,19 @@ void test_fractal_math() {
     auto cube = mandelbrot(2.0, 2.0, iters, bail, /*exponent=*/3.0);
     CHECK(cube.escaped);
 
+    // ---- Formula variants (Burning Ship, Tricorn) ----
+    // Burning Ship folds components positive, so a point that is interior for
+    // the plain Mandelbrot can behave differently. Check it runs and that the
+    // abs-fold actually changes the orbit vs. quadratic at an asymmetric point.
+    auto qd = escapeTime({0,0}, {-0.5, 0.55}, iters, bail, 2.0, Formula::Quadratic);
+    auto bs = escapeTime({0,0}, {-0.5, 0.55}, iters, bail, 2.0, Formula::BurningShip);
+    auto tc = escapeTime({0,0}, {-0.5, 0.55}, iters, bail, 2.0, Formula::Tricorn);
+    CHECK(std::isfinite(bs.smooth) || !bs.escaped);
+    CHECK(bs.iter != qd.iter || tc.iter != qd.iter); // at least one diverges from quadratic
+    // Far points still escape fast under every formula.
+    CHECK(escapeTime({0,0}, {3.0, 3.0}, iters, bail, 2.0, Formula::BurningShip).escaped);
+    CHECK(escapeTime({0,0}, {3.0, 3.0}, iters, bail, 2.0, Formula::Tricorn).escaped);
+
     // ---- Distance estimation ----
     // Interior -> negative sentinel.
     CHECK(distanceEstimate({0,0}, {0,0}, /*mandel=*/true, iters, bail) < 0.0);

@@ -103,6 +103,19 @@ bool applyPreset(const std::string& name, VideoConfig& c, std::string& palette_s
         c.cyclic = true; c.bloom = 0.75; c.bloom_threshold = 0.35;
         c.vignette = 0.4; c.grain = 0.025;
     }
+    // Other iteration formulas (--formula). SAC coloring carries over to all the
+    // escape-time ones; Newton has its own basin coloring.
+    else if (name == "burning-ship") { // the "armada", reflected and jagged
+        mandel(-0.5, -0.5, 1.45, 1500, "ember"); c.formula = Formula::BurningShip;
+    }
+    else if (name == "phoenix") {      // flame-like, uses the z_prev term
+        julia(0.5667, 0.0, 1.35, 1000, "ice");
+        c.formula = Formula::Phoenix; c.phoenix_pre = -0.5;
+    }
+    else if (name == "newton") {       // three root basins of z^3 - 1
+        julia(0.0, 0.0, 1.40, 80, "neon");
+        c.formula = Formula::Newton; c.cyclic = true; c.bloom = 0.2;
+    }
     else return false;
     return true;
 }
@@ -115,6 +128,7 @@ const std::vector<std::string>& presetNames() {
         "synthwave", "nord", "dracula", "gruvbox", "autumn", "rosegold",
         "galaxy", "mint", "acid-swirl",
         "cover-mandala", "cover-hero", "cover-glitch", "cover-cosmic",
+        "burning-ship", "phoenix", "newton",
     };
     return kNames;
 }
@@ -145,6 +159,9 @@ USAGE
 COMMON OPTIONS
   -P, --preset <name>             Start from a curated preset (see PRESETS)
   -t, --type <julia|mandelbrot>   Fractal family            (default: julia)
+      --formula <name>            quadratic|burningship|tricorn|phoenix|newton
+                                  (default: quadratic)
+      --phoenix-p <float>         Phoenix z_prev coefficient (default: -0.5)
       --cre <float>               Julia constant real part  (default: -0.512511)
       --cim <float>               Julia constant imag part  (default: 0.521295)
       --center-x <float>          View center x             (default: 0)
@@ -279,6 +296,16 @@ ParsedArgs parseArgs(const std::vector<std::string>& args) {
             else if (v == "mandelbrot") cfg.type = FractalType::Mandelbrot;
             else { fail("--type must be 'julia' or 'mandelbrot', got '" + v + "'"); break; }
         }
+        else if (flag == "--formula") {
+            std::string v; if (!cur.nextStr(flag, v)) break;
+            if      (v == "quadratic")    cfg.formula = Formula::Quadratic;
+            else if (v == "burningship")  cfg.formula = Formula::BurningShip;
+            else if (v == "tricorn")      cfg.formula = Formula::Tricorn;
+            else if (v == "phoenix")      cfg.formula = Formula::Phoenix;
+            else if (v == "newton")       cfg.formula = Formula::Newton;
+            else { fail("--formula must be quadratic, burningship, tricorn, phoenix, or newton; got '" + v + "'"); break; }
+        }
+        else if (flag == "--phoenix-p") { if (!cur.nextDouble(flag, cfg.phoenix_pre)) break; }
         else if (flag == "--cre") { if (!cur.nextDouble(flag, cfg.julia_cre)) break; }
         else if (flag == "--cim") { if (!cur.nextDouble(flag, cfg.julia_cim)) break; }
         else if (flag == "--center-x" || flag == "--cx") { if (!cur.nextDouble(flag, cfg.center_x)) break; }

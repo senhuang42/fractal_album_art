@@ -16,6 +16,19 @@ enum class FractalType {
     Julia,      // c = fixed const,  z0 = pixel
 };
 
+// The iteration formula, orthogonal to FractalType (which only decides whether
+// the pixel is c or z0). Quadratic/BurningShip/Tricorn/Phoenix are escape-time
+// and use the normal SAC coloring; Newton is convergence-based (root basins)
+// with its own coloring path. Integer values must match uFormula in the shader
+// and Formula in fractal_math.h.
+enum class Formula {
+    Quadratic = 0,   // z -> z^2 + c
+    BurningShip = 1, // z -> (|Re z| + i|Im z|)^2 + c
+    Tricorn = 2,     // z -> conj(z)^2 + c
+    Phoenix = 3,     // z -> z^2 + c + p*z_prev
+    Newton = 4,      // z -> z - (z^3 - 1)/(3 z^2), colored by which root it reaches
+};
+
 // How an animation evolves over its duration. All modes are designed so that
 // frame 0 and the final frame line up, giving a seamless loop.
 enum class AnimMode {
@@ -37,6 +50,11 @@ struct Color {
 // this per frame (center, scale, julia_c, color_offset).
 struct RenderConfig {
     FractalType type = FractalType::Julia;
+    Formula     formula = Formula::Quadratic;
+    // Phoenix parameter p (the z_prev coefficient); only used when formula is
+    // Phoenix. Classic Phoenix uses a real p (e.g. -0.5) with c real.
+    double      phoenix_pre = -0.5;
+    double      phoenix_pim = 0.0;
 
     // View into the complex plane. `scale` is half the vertical extent in
     // complex units, so smaller scale == deeper zoom.

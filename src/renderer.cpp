@@ -266,6 +266,8 @@ void Renderer::render(const RenderConfig& cfg) {
     setUniform1f(fractal_prog_, "uFalloff", (float)cfg.falloff);
     setUniform1f(fractal_prog_, "uKaleido", (float)cfg.kaleido);
     setUniform1f(fractal_prog_, "uKaleidoAngle", (float)(cfg.kaleido_angle * M_PI / 180.0));
+    setUniform1i(fractal_prog_, "uFormula", (int)cfg.formula);
+    setUniform2f(fractal_prog_, "uPhoenixP", (float)cfg.phoenix_pre, (float)cfg.phoenix_pim);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
